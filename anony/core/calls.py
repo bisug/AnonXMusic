@@ -105,6 +105,11 @@ class TgCall(PyTgCalls):
                     _thumb = await _thumb_task
                 media.time = 1
                 await db.add_call(chat_id)
+                # Pre-fetch the next queued track in the background so there
+                # is no download gap when the current track ends.
+                _next = queue.get_next(chat_id, check=True)
+                if _next and isinstance(_next, Track) and not _next.file_path:
+                    asyncio.create_task(yt.download(_next.id, video=_next.video))
                 text = _lang["play_media"].format(
                     media.url,
                     media.title,
@@ -177,6 +182,11 @@ class TgCall(PyTgCalls):
             return await self.replay(chat_id)
 
         media = queue.get_next(chat_id)
+
+        # Guard must come BEFORE any attribute access on media
+        if not media:
+            return await self.stop(chat_id)
+
         try:
             if media.message_id:
                 await app.delete_messages(
@@ -187,9 +197,6 @@ class TgCall(PyTgCalls):
                 media.message_id = 0
         except Exception:
             pass
-
-        if not media:
-            return await self.stop(chat_id)
 
         _lang = await lang.get_lang(chat_id)
         msg = await app.send_message(chat_id=chat_id, text=_lang["play_next"])
@@ -228,7 +235,7 @@ class TgCall(PyTgCalls):
     async def boot(self) -> None:
         PyTgCallsSession.notice_displayed = True
         for ub in userbot.clients:
-            client = PyTgCalls(ub, cache_duration=100)
+            client = PyTgCalls(ub, cache_duration=300)
             await client.start()
             self.clients.append(client)
             await self.decorators(client)

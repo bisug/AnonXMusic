@@ -21,10 +21,10 @@ class MongoDB:
 
         self.admin_list = {}
         self.active_calls = {}
-        self.admin_play = []
+        self.admin_play = set()
         self.blacklisted = []
-        self.cmd_delete = []
-        self.thumbnail_enabled = []
+        self.cmd_delete = set()
+        self.thumbnail_enabled = set()
         self.loop = {}
         self.notified = []
         self.cache = self.db.cache
@@ -213,14 +213,14 @@ class MongoDB:
         if chat_id not in self.cmd_delete:
             doc = await self.chatsdb.find_one({"_id": chat_id})
             if doc and doc.get("cmd_delete"):
-                self.cmd_delete.append(chat_id)
+                self.cmd_delete.add(chat_id)
         return chat_id in self.cmd_delete
 
     async def set_cmd_delete(self, chat_id: int, delete: bool = False) -> None:
         if delete:
-            self.cmd_delete.append(chat_id)
+            self.cmd_delete.add(chat_id)
         else:
-            self.cmd_delete.remove(chat_id)
+            self.cmd_delete.discard(chat_id)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"cmd_delete": delete}},
@@ -233,18 +233,16 @@ class MongoDB:
         if chat_id not in self.thumbnail_enabled:
             doc = await self.chatsdb.find_one({"_id": chat_id})
             if doc and doc.get("thumbnail_enabled"):
-                self.thumbnail_enabled.append(chat_id)
+                self.thumbnail_enabled.add(chat_id)
         # Disabled when NOT in the enabled list (default = disabled)
         return chat_id not in self.thumbnail_enabled
 
     async def set_thumbnail_mode(self, chat_id: int, disable: bool = False) -> None:
         """Set whether thumbnails are disabled (disable=True means no thumbnail)."""
         if disable:
-            if chat_id in self.thumbnail_enabled:
-                self.thumbnail_enabled.remove(chat_id)
+            self.thumbnail_enabled.discard(chat_id)
         else:
-            if chat_id not in self.thumbnail_enabled:
-                self.thumbnail_enabled.append(chat_id)
+            self.thumbnail_enabled.add(chat_id)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"thumbnail_enabled": not disable}},
@@ -289,14 +287,14 @@ class MongoDB:
         if chat_id not in self.admin_play:
             doc = await self.chatsdb.find_one({"_id": chat_id})
             if doc and doc.get("admin_play"):
-                self.admin_play.append(chat_id)
+                self.admin_play.add(chat_id)
         return chat_id in self.admin_play
 
     async def set_play_mode(self, chat_id: int, remove: bool = False) -> None:
-        if remove and chat_id in self.admin_play:
-            self.admin_play.remove(chat_id)
+        if remove:
+            self.admin_play.discard(chat_id)
         else:
-            self.admin_play.append(chat_id)
+            self.admin_play.add(chat_id)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"admin_play": not remove}},
