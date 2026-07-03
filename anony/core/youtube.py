@@ -199,13 +199,12 @@ class YouTube:
         if cached:
             return cached
 
-        cookie = self.get_cookies()
-        api_tried = False
-        if not cookie and self._api_enabled():
-            api_tried = True
+        if self._api_enabled():
             downloaded = await self._download_api(video_id, video=video)
             if downloaded:
                 return downloaded
+
+        cookie = self.get_cookies()
 
         base_opts = {
             "outtmpl": "downloads/%(id)s.%(ext)s",
@@ -216,18 +215,36 @@ class YouTube:
             "overwrites": False,
             "nocheckcertificate": True,
             "cookiefile": cookie,
+            # Download up to 4 fragments concurrently — major speed boost
+            # for DASH/HLS streams that are split into many small chunks.
+            "concurrent_fragment_downloads": 4,
+            # Fail fast on stalled connections instead of hanging indefinitely.
+            "socket_timeout": 15,
+            # Skip checking every format's availability before selecting;
+            # trust the format string and only verify what we picked.
+            "check_formats": "selected",
         }
 
         if video:
             ydl_opts = {
                 **base_opts,
-                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio)",
+                # Prefer h264+aac in a single mp4 container when possible
+                # (no post-merge step) then fall back to best available.
+                "format": (
+                    "(bestvideo[height<=?720][width<=?1280][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a])"
+                    "/"
+                    "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio)"
+                    "/"
+                    "bestvideo[height<=?720]+bestaudio"
+                ),
                 "merge_output_format": "mp4",
             }
         else:
             ydl_opts = {
                 **base_opts,
-                "format": "bestaudio[ext=webm][acodec=opus]",
+                # Prefer native Opus/WebM (no transcoding), fall back to
+                # any best-audio format so the download never fails silently.
+                "format": "bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio",
             }
 
         def _download():
@@ -244,6 +261,4 @@ class YouTube:
         downloaded = await asyncio.to_thread(_download)
         if downloaded:
             return downloaded
-        if api_tried:
-            return None
-        return await self._download_api(video_id, video=video)
+        return None
