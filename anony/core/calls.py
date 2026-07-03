@@ -128,7 +128,7 @@ class TgCall(PyTgCalls):
                         )
                     else:
                         await message.edit_text(text, reply_markup=keyboard)
-                except (ChatSendMediaForbidden, ChatSendPhotosForbidden, MessageIdInvalid):
+                except Exception:
                     if _thumb:
                         sent = await app.send_photo(
                             chat_id=chat_id,
