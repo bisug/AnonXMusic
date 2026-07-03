@@ -29,6 +29,7 @@ class TgCall(PyTgCalls):
         await db.playing(chat_id, paused=True)
         return await client.pause(chat_id)
 
+
     async def resume(self, chat_id: int) -> bool:
         client = await db.get_assistant(chat_id)
         await db.playing(chat_id, paused=False)
@@ -36,6 +37,17 @@ class TgCall(PyTgCalls):
 
     async def stop(self, chat_id: int) -> None:
         client = await db.get_assistant(chat_id)
+        current = queue.get_current(chat_id)
+        if current and current.message_id:
+            try:
+                await app.delete_messages(
+                    chat_id=chat_id,
+                    message_ids=current.message_id,
+                    revoke=True,
+                )
+            except Exception:
+                pass
+        
         queue.clear(chat_id)
         await db.remove_call(chat_id)
         await db.set_loop(chat_id, 0)
@@ -177,6 +189,17 @@ class TgCall(PyTgCalls):
 
 
     async def play_next(self, chat_id: int) -> None:
+        current = queue.get_current(chat_id)
+        if current and current.message_id:
+            try:
+                await app.delete_messages(
+                    chat_id=chat_id,
+                    message_ids=current.message_id,
+                    revoke=True,
+                )
+            except Exception:
+                pass
+
         if loop := await db.get_loop(chat_id):
             await db.set_loop(chat_id, loop - 1)
             return await self.replay(chat_id)
