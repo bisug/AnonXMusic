@@ -231,11 +231,13 @@ class YouTube:
                 # Prefer h264+aac in a single mp4 container when possible
                 # (no post-merge step) then fall back to best available.
                 "format": (
-                    "(bestvideo[height<=?720][width<=?1280][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a])"
+                    "bestvideo[height<=?720][width<=?1280][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]"
                     "/"
-                    "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio)"
+                    "bestvideo[height<=?720][width<=?1280][ext=mp4]+bestaudio"
                     "/"
                     "bestvideo[height<=?720]+bestaudio"
+                    "/"
+                    "best"
                 ),
                 "merge_output_format": "mp4",
             }
@@ -244,7 +246,7 @@ class YouTube:
                 **base_opts,
                 # Prefer native Opus/WebM (no transcoding), fall back to
                 # any best-audio format so the download never fails silently.
-                "format": "bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio",
+                "format": "bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio/best",
             }
 
         def _download():
