@@ -198,7 +198,8 @@ class Inline:
         )
 
     def settings_markup(
-        self, lang: dict, admin_only: bool, cmd_delete: bool, language: str, chat_id: int
+        self, lang: dict, admin_only: bool, cmd_delete: bool, language: str, chat_id: int,
+        no_thumbnail: bool = False,
     ) -> types.InlineKeyboardMarkup:
         return self.ikm(
             [
@@ -224,6 +225,18 @@ class Inline:
                         text=cmd_delete,
                         category="enabled" if cmd_delete else "disabled",
                         callback_data="settings delete",
+                    ),
+                ],
+                [
+                    self._button(
+                        text=lang["thumbnail"] + " ➜",
+                        category="setting",
+                        callback_data="settings",
+                    ),
+                    self._button(
+                        text=lang["thumbnail_off"] if no_thumbnail else lang["thumbnail_on"],
+                        category="disabled" if no_thumbnail else "enabled",
+                        callback_data="settings thumbnail",
                     ),
                 ],
                 [

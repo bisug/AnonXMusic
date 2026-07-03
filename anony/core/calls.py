@@ -57,7 +57,8 @@ class TgCall(PyTgCalls):
         _lang = await lang.get_lang(chat_id)
         _thumb = None
         _thumb_task = None
-        if config.THUMB_GEN and not seek_time:
+        _no_thumb = await db.get_thumbnail_mode(chat_id)
+        if config.THUMB_GEN and not seek_time and not _no_thumb:
             if isinstance(media, Track):
                 _thumb_task = asyncio.create_task(thumb.generate(media))
             else:

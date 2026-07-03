@@ -24,6 +24,7 @@ class MongoDB:
         self.admin_play = []
         self.blacklisted = []
         self.cmd_delete = []
+        self.thumbnail_enabled = []
         self.loop = {}
         self.notified = []
         self.cache = self.db.cache
@@ -223,6 +224,30 @@ class MongoDB:
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"cmd_delete": delete}},
+            upsert=True,
+        )
+
+    # THUMBNAIL MODE METHODS
+    async def get_thumbnail_mode(self, chat_id: int) -> bool:
+        """Return True when thumbnails are DISABLED for this chat. Default: disabled."""
+        if chat_id not in self.thumbnail_enabled:
+            doc = await self.chatsdb.find_one({"_id": chat_id})
+            if doc and doc.get("thumbnail_enabled"):
+                self.thumbnail_enabled.append(chat_id)
+        # Disabled when NOT in the enabled list (default = disabled)
+        return chat_id not in self.thumbnail_enabled
+
+    async def set_thumbnail_mode(self, chat_id: int, disable: bool = False) -> None:
+        """Set whether thumbnails are disabled (disable=True means no thumbnail)."""
+        if disable:
+            if chat_id in self.thumbnail_enabled:
+                self.thumbnail_enabled.remove(chat_id)
+        else:
+            if chat_id not in self.thumbnail_enabled:
+                self.thumbnail_enabled.append(chat_id)
+        await self.chatsdb.update_one(
+            {"_id": chat_id},
+            {"$set": {"thumbnail_enabled": not disable}},
             upsert=True,
         )
 
