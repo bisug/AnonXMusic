@@ -28,8 +28,15 @@ def setup_signal_handlers(stop_event: asyncio.Event):
 
         if received_signal is None:
             received_signal = signal.Signals(signum).name
-            logger.info("Received %s. Shutting down...", received_signal)
-        stop_event.set()
+            logger.info("Received %s. Shutting down gracefully...", received_signal)
+            stop_event.set()
+        else:
+            # Second signal → force exit immediately.
+            logger.warning(
+                "Received %s again. Forcing exit.",
+                signal.Signals(signum).name,
+            )
+            sys.exit(1)
 
     def signal_handler(signum, _frame):
         loop.call_soon_threadsafe(request_shutdown, signum)

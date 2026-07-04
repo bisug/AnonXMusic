@@ -17,6 +17,7 @@ from pytgcalls.pytgcalls_session import PyTgCallsSession
 
 from anony import (app, config, db, lang, logger,
                    queue, thumb, userbot, yt)
+from anony import is_shutting_down
 from anony.helpers import Media, Track, buttons
 
 
@@ -38,7 +39,8 @@ class TgCall(PyTgCalls):
     async def stop(self, chat_id: int) -> None:
         client = await db.get_assistant(chat_id)
         current = queue.get_current(chat_id)
-        if current and current.message_id:
+        # Skip message deletion during shutdown to avoid hanging network calls.
+        if current and current.message_id and not is_shutting_down():
             try:
                 await app.delete_messages(
                     chat_id=chat_id,
@@ -268,11 +270,18 @@ class TgCall(PyTgCalls):
     async def exit(self) -> None:
         """
         Leave active group calls and release local PyTgCalls resources.
+
+        Skips Telegram network calls (message deletion) since this runs
+        during shutdown when the bot connection is being torn down.
+        ``is_shutting_down()`` guards the inner delete_messages call inside
+        ``stop()``, so it is safe to call stop() from here.
         """
         clients = list(self.clients)
         if not clients:
             return
 
+        # Leave every active call; stop() skips message deletion automatically
+        # because is_shutting_down() returns True at this point.
         for chat_id in list(db.active_calls):
             with suppress(Exception):
                 await self.stop(chat_id)

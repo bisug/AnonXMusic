@@ -41,8 +41,8 @@ class Thumbnail:
         for task in tasks:
             task.cancel()
         for task in tasks:
-            with suppress(asyncio.CancelledError):
-                await task
+            with suppress(asyncio.CancelledError, Exception):
+                await asyncio.wait_for(asyncio.shield(task), timeout=5)
         self.pending.clear()
         if self.session and not self.session.closed:
             await self.session.close()

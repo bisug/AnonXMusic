@@ -49,8 +49,8 @@ class Telegram:
             if not task.done():
                 task.cancel()
         for task in tasks:
-            with suppress(asyncio.CancelledError):
-                await task
+            with suppress(asyncio.CancelledError, Exception):
+                await asyncio.wait_for(asyncio.shield(task), timeout=5)
 
         self.active.clear()
         self.events.clear()

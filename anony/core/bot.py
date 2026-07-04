@@ -4,6 +4,7 @@
 
 
 import pyrogram
+from contextlib import suppress
 
 from anony import config, logger
 
@@ -106,8 +107,10 @@ class Bot(pyrogram.Client):
 
     async def exit(self):
         """
-        Asynchronously stops the bot.
+        Sends a shutdown notification to the logger group, then stops the bot.
         """
-        if getattr(self, "is_connected", False):
+        if self.is_connected:
+            with suppress(Exception):
+                await self.send_message(self.logger, "Bot Stopped")
             await super().stop()
             logger.info("Bot stopped.")

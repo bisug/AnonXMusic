@@ -31,10 +31,16 @@ from config import Config
 
 config = Config()
 config.check()
-tasks = []
+tasks: list[asyncio.Task] = []
 _stop_lock: asyncio.Lock | None = None
 _stopped = False
+_shutting_down = False
 boot = time.time()
+
+
+def is_shutting_down() -> bool:
+    """Return True once the shutdown sequence has begun."""
+    return _shutting_down
 
 from anony.core.bot import Bot
 app = Bot()
@@ -115,12 +121,13 @@ async def _run_cleanup(
 
 
 async def stop(ignore_cleanup_errors: bool = False) -> None:
-    global _stopped
+    global _stopped, _shutting_down
 
     async with _get_stop_lock():
         if _stopped:
             return
 
+        _shutting_down = True
         logger.info("Stopping...")
         await _cancel_tasks()
 
@@ -132,12 +139,18 @@ async def stop(ignore_cleanup_errors: bool = False) -> None:
             ("database", db.close),
             ("thumbnails", thumb.close),
         )
-        for name, closer in cleaners:
-            await _run_cleanup(
-                name,
-                closer,
-                ignore_cleanup_errors=ignore_cleanup_errors,
-            )
+
+        # Hard deadline: the entire cleanup must finish within 60 seconds.
+        try:
+            async with asyncio.timeout(60):
+                for name, closer in cleaners:
+                    await _run_cleanup(
+                        name,
+                        closer,
+                        ignore_cleanup_errors=ignore_cleanup_errors,
+                    )
+        except TimeoutError:
+            logger.warning("Shutdown timed out after 60 s; forcing exit.")
 
         _stopped = True
         logger.info("Stopped.\n")
