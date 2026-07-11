@@ -4,6 +4,7 @@
 
 
 import asyncio
+from urllib.parse import urlparse
 
 from pyrogram import enums, errors, types
 

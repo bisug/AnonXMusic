@@ -30,6 +30,10 @@ async def cancel_dl(_, query: types.CallbackQuery):
 async def _controls(_, query: types.CallbackQuery):
     args = query.data.split()
     action, chat_id = args[1], int(args[2])
+    # Prevent cross-chat VC control via a forwarded "now playing" message:
+    # the embedded target chat must equal the chat this button physically lives in.
+    if not query.message or chat_id != query.message.chat.id:
+        return await query.answer(query.lang["user_no_perms"], show_alert=True)
     qaction = len(args) == 4
     user = query.from_user.mention
 
