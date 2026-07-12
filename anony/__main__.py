@@ -70,12 +70,15 @@ async def idle(stop_event: asyncio.Event):
 async def load_access_filters() -> None:
     sudoers = await db.get_sudoers()
     blacklisted = await db.get_blacklisted()
+    bl_chats = await db.get_blacklisted(True)
     app.sudoers.update(sudoers)
     app.bl_users.update(blacklisted)
+    app.bl_chats.update(bl_chats)
     logger.info(
-        "Loaded %s sudo users and %s blacklisted users.",
+        "Loaded %s sudo users, %s blacklisted users and %s blacklisted chats.",
         len(sudoers),
         len(blacklisted),
+        len(bl_chats),
     )
 
 

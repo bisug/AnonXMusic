@@ -27,6 +27,7 @@ class Bot(pyrogram.Client):
         self.owner = config.OWNER_ID
         self.logger = config.LOGGER_ID
         self.bl_users = pyrogram.filters.user()
+        self.bl_chats = pyrogram.filters.chat()
         self.sudoers = pyrogram.filters.user(self.owner)
 
     @staticmethod
