@@ -155,14 +155,17 @@ class YouTube:
             return None
         if results and results["result"]:
             data = results["result"][0]
+            title = data.get("title") or "Unknown"
+            thumbs = data.get("thumbnails") or []
+            thumbnail = thumbs[-1].get("url", "").split("?")[0] if thumbs else None
             return Track(
                 id=data.get("id"),
                 channel_name=data.get("channel", {}).get("name"),
                 duration=data.get("duration"),
                 duration_sec=utils.to_seconds(data.get("duration")),
                 message_id=m_id,
-                title=data.get("title")[:25],
-                thumbnail=data.get("thumbnails", [{}])[-1].get("url").split("?")[0],
+                title=title[:25],
+                thumbnail=thumbnail,
                 url=data.get("link"),
                 view_count=data.get("viewCount", {}).get("short"),
                 video=video,
@@ -225,8 +228,6 @@ class YouTube:
 
     async def download(self, video_id: str, video: bool = False) -> str | None:
         url = self.base + video_id
-        ext = "mp4" if video else "webm"
-        filename = f"downloads/{video_id}.{ext}"
 
         cached = self._cached_download(video_id, video)
         if cached:
@@ -292,7 +293,10 @@ class YouTube:
                 except Exception as ex:
                     logger.warning("Unexpected download error for %s: %s", video_id, ex)
                     return None
-            return filename if self._usable_file(filename) else None
+            # yt_dlp writes the real extension via %(ext)s (audio may fall
+            # back to m4a, etc.), so resolve the actual file rather than
+            # assuming a single hardcoded extension.
+            return self._cached_download(video_id, video)
 
         downloaded = await asyncio.to_thread(_download)
         if downloaded:
