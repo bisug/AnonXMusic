@@ -48,12 +48,17 @@ rel_hist = {}
 
 @app.on_message(filters.command(["admincache", "reload"]) & filters.group & ~app.bl_users)
 @lang.language()
+@admin_check
 async def _admincache(_, m: types.Message):
-    if m.from_user.id in rel_hist:
-        if time.time() < rel_hist[m.from_user.id]:
-            return await m.reply_text(m.lang["admin_cache_wait"])
+    now = time.time()
+    # Drop expired cooldowns so rel_hist stays bounded to active users.
+    for uid in [uid for uid, until in rel_hist.items() if until <= now]:
+        del rel_hist[uid]
 
-    rel_hist[m.from_user.id] = time.time() + 600
+    if m.from_user.id in rel_hist and now < rel_hist[m.from_user.id]:
+        return await m.reply_text(m.lang["admin_cache_wait"])
+
+    rel_hist[m.from_user.id] = now + 600
     sent = await m.reply_text(m.lang["admin_cache_reloading"])
     await db.get_admins(m.chat.id, reload=True)
     await sent.edit_text(m.lang["admin_cache_reloaded"])

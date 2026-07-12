@@ -24,6 +24,8 @@ from anony.helpers import Media, Track, buttons
 class TgCall(PyTgCalls):
     def __init__(self):
         self.clients = []
+        # Per-chat next-track prefetch downloads, cancelled on stop.
+        self._prefetch: dict[int, asyncio.Task] = {}
 
     async def pause(self, chat_id: int) -> bool:
         client = await db.get_assistant(chat_id)
@@ -38,6 +40,9 @@ class TgCall(PyTgCalls):
 
     async def stop(self, chat_id: int) -> None:
         client = await db.get_assistant(chat_id)
+        prefetch = self._prefetch.pop(chat_id, None)
+        if prefetch and not prefetch.done():
+            prefetch.cancel()
         current = queue.get_current(chat_id)
         # Skip message deletion during shutdown to avoid hanging network calls.
         if current and current.message_id and not is_shutting_down():
@@ -123,7 +128,16 @@ class TgCall(PyTgCalls):
                 # is no download gap when the current track ends.
                 _next = queue.get_next(chat_id, check=True)
                 if _next and isinstance(_next, Track) and not _next.file_path:
-                    asyncio.create_task(yt.download(_next.id, video=_next.video))
+                    old = self._prefetch.pop(chat_id, None)
+                    if old and not old.done():
+                        old.cancel()
+                    task = asyncio.create_task(yt.download(_next.id, video=_next.video))
+                    self._prefetch[chat_id] = task
+                    task.add_done_callback(
+                        lambda t, c=chat_id: self._prefetch.pop(c, None)
+                        if self._prefetch.get(c) is t
+                        else None
+                    )
                 text = _lang["play_media"].format(
                     media.url,
                     media.title,
@@ -228,10 +242,10 @@ class TgCall(PyTgCalls):
         if not media.file_path:
             media.file_path = await yt.download(media.id, video=media.video)
             if not media.file_path:
-                await self.play_next(chat_id)
-                return await msg.edit_text(
+                await msg.edit_text(
                     _lang["error_no_file"].format(config.SUPPORT_CHAT)
                 )
+                return await self.play_next(chat_id)
 
         media.message_id = msg.id
         await self.play_media(chat_id, msg, media)

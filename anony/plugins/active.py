@@ -4,6 +4,8 @@
 
 
 import os
+import tempfile
+from contextlib import suppress
 
 from pyrogram import filters, types
 
@@ -29,13 +31,17 @@ async def _activevc(_, m: types.Message):
     if len(text) < 4000:
         return await sent.edit_text(m.lang["vc_list"] + text)
 
-    with open("activevc.txt", "w") as f:
-        f.write(text)
-    f.close()
-    await sent.edit_media(
-        media=types.InputMediaDocument(
-            media="activevc.txt",
-            caption=m.lang["vc_list"],
+    fd, path = tempfile.mkstemp(prefix="activevc_", suffix=".txt")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        await sent.edit_media(
+            media=types.InputMediaDocument(
+                media=path,
+                caption=m.lang["vc_list"],
+                file_name="activevc.txt",
+            )
         )
-    )
-    os.remove("activevc.txt")
+    finally:
+        with suppress(OSError):
+            os.remove(path)
