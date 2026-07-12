@@ -65,6 +65,7 @@ async def update_timer(length=10, sleep=12):
                 duration, message_id = media.duration_sec, media.message_id
                 if not duration or not message_id or not media.time:
                     continue
+                remove = False
                 played = media.time
                 remaining = max(duration - played, 0)
                 pos = min(int((played / duration) * length), length - 1)
