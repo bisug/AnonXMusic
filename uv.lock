@@ -708,7 +708,7 @@ wheels = [
 
 [[package]]
 name = "py-tgcalls"
-version = "2.3.0"
+version = "2.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -716,7 +716,7 @@ dependencies = [
     { name = "ntgcalls" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/16/8188c1f04c63f0d926ba55cdadeae9d40a6d6fcb7d755c94814f478dd518/py_tgcalls-2.3.0-py3-none-any.whl", hash = "sha256:100250e1962b5a172e2b7b99d2379a976bb4a8d841a9e94f73d7322fa190819b", size = 84871, upload-time = "2026-06-03T19:47:28.042Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/d9/45bdc6c85ed6bdfb55b8ab2e60e048872d9c5db42fa16bc41a91b1de6d88/py_tgcalls-2.3.3-py3-none-any.whl", hash = "sha256:797c4f6677f3fc48f073852f21ebe578e42562a57a873a8ab6393583759d3ad8", size = 80755, upload-time = "2026-06-16T19:24:18.84Z" },
 ]
 
 [[package]]
