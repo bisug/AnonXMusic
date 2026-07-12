@@ -5,6 +5,7 @@
 
 import time
 import asyncio
+from contextlib import suppress
 
 from pyrogram import enums, errors, filters, types
 
@@ -47,12 +48,17 @@ async def track_time():
     while True:
         await asyncio.sleep(1)
         for chat_id in list(db.active_calls):
-            if not await db.playing(chat_id):
-                continue
-            media = queue.get_current(chat_id)
-            if not media:
-                continue
-            media.time += 1
+            try:
+                if not await db.playing(chat_id):
+                    continue
+                media = queue.get_current(chat_id)
+                if not media:
+                    continue
+                media.time += 1
+            except asyncio.CancelledError:
+                raise
+            except Exception as ex:
+                logger.warning("track_time failed for chat %s: %r", chat_id, ex)
 
 
 async def update_timer(length=10, sleep=12):
@@ -116,19 +122,24 @@ async def vc_watcher(sleep=15):
                 participants = await client.get_participants(chat_id)
                 if len(participants) < 2 and media.time > 30:
                     _lang = await lang.get_lang(chat_id)
-                    sent = await app.edit_message_reply_markup(
-                        chat_id=chat_id,
-                        message_id=media.message_id,
-                        reply_markup=buttons.controls(
-                            chat_id=chat_id, status=_lang["stopped"], remove=True
-                        ),
-                    )
+                    # The status-markup edit is cosmetic; if the now-playing
+                    # message was deleted it raises MessageIdInvalid. Suppress
+                    # it so the auto-stop below always runs.
+                    sent = None
+                    with suppress(errors.MessageNotModified, errors.MessageIdInvalid):
+                        sent = await app.edit_message_reply_markup(
+                            chat_id=chat_id,
+                            message_id=media.message_id,
+                            reply_markup=buttons.controls(
+                                chat_id=chat_id, status=_lang["stopped"], remove=True
+                            ),
+                        )
                     await anon.stop(chat_id)
-                    await sent.reply_text(_lang["auto_left"])
+                    if sent:
+                        with suppress(Exception):
+                            await sent.reply_text(_lang["auto_left"])
             except asyncio.CancelledError:
                 raise
-            except errors.MessageIdInvalid:
-                pass
             except Exception as ex:
                 logger.warning("vc_watcher failed for chat %s: %r", chat_id, ex)
 

@@ -38,6 +38,7 @@ async def _broadcast(_, message: types.Message):
 
     async with broadcasting:
         for chat in chats:
+            retries = 0
             while True:
                 try:
                     (
@@ -53,7 +54,14 @@ async def _broadcast(_, message: types.Message):
                     break
                 except errors.FloodWait as fw:
                     # Wait out the rate limit, then retry the SAME chat so it
-                    # is not silently dropped from the broadcast.
+                    # is not silently dropped. Cap retries so a persistently
+                    # rate-limited chat cannot hold the broadcast lock forever.
+                    retries += 1
+                    if retries > 5:
+                        if not failed:
+                            failed = open("errors.txt", "w")
+                        failed.write(f"{chat} - FloodWait retries exceeded\n")
+                        break
                     await asyncio.sleep(fw.value + 10)
                     continue
                 except Exception as ex:

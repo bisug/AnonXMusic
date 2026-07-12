@@ -66,7 +66,7 @@ class Telegram:
 
         media = msg.audio or msg.voice or msg.video or msg.document
         file_id = getattr(media, "file_unique_id", None)
-        file_ext = getattr(media, "file_name", "").split(".")[-1]
+        file_ext = (getattr(media, "file_name", "") or "").split(".")[-1]
         file_size = getattr(media, "file_size", 0)
         file_title = getattr(media, "title", "Telegram File") or "Telegram File"
         duration = getattr(media, "duration", 0)
