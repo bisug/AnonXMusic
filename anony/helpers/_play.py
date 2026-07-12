@@ -99,7 +99,11 @@ def checkUB(play):
                 umm = await m.reply_text(m.lang["play_invite"].format(app.name))
                 await asyncio.sleep(2)
                 try:
-                    await client.join_chat(invite_link)
+                    result = await client.join_chat(invite_link)
+                    # kurigram 2.2.24: join_chat swallows InviteRequestSent and
+                    # returns ChatJoinResultRequestSent instead of raising.
+                    if isinstance(result, types.ChatJoinResultRequestSent):
+                        raise errors.InviteRequestSent
                 except errors.UserAlreadyParticipant:
                     pass
                 except errors.InviteRequestSent:
