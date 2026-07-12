@@ -101,6 +101,18 @@ class TgCall(PyTgCalls):
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
+        # pytgcalls injects ffmpeg_parameters before -i (input options).
+        # For network streams (m3u8/HLS, where file_path is a URL) add
+        # reconnect flags so a transient blip doesn't end playback; for
+        # local files they'd be ignored, so only apply to URL inputs.
+        ffmpeg_args = []
+        if str(media.file_path).startswith(("http://", "https://")):
+            ffmpeg_args.append(
+                "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+            )
+        if seek_time > 1:
+            ffmpeg_args.append(f"-ss {seek_time}")
+
         stream = types.MediaStream(
             media_path=media.file_path,
             audio_parameters=types.AudioQuality.HIGH,
@@ -111,7 +123,7 @@ class TgCall(PyTgCalls):
                 if media.video
                 else types.MediaStream.Flags.IGNORE
             ),
-            ffmpeg_parameters=f"-ss {seek_time}" if seek_time > 1 else None,
+            ffmpeg_parameters=" ".join(ffmpeg_args) if ffmpeg_args else None,
         )
         try:
             await client.play(

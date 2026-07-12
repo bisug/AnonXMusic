@@ -126,7 +126,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = "~=3.14.1" },
-    { name = "kurigram", specifier = ">=2.2.24" },
+    { name = "kurigram", specifier = "~=2.2.24" },
     { name = "pillow", specifier = "~=12.2.0" },
     { name = "psutil", specifier = "~=7.2.2" },
     { name = "py-tgcalls", specifier = "~=2.3.0" },
@@ -136,7 +136,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = "~=1.2.2" },
     { name = "speedtest-cli", specifier = ">=2.1.3" },
     { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.22.1" },
-    { name = "yt-dlp", extras = ["default"], specifier = ">=2026.6.9" },
+    { name = "yt-dlp", extras = ["default"], specifier = "==2026.6.9" },
 ]
 
 [[package]]

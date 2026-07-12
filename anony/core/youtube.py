@@ -5,6 +5,7 @@
 
 import os
 import re
+import time
 import yt_dlp
 import random
 import asyncio
@@ -15,6 +16,27 @@ from py_yt import Playlist, VideosSearch
 
 from anony import config, logger
 from anony.helpers import Track, utils
+
+
+class _YDLLogger:
+    """Route yt-dlp output to the app logger.
+
+    Debug/info are dropped (too noisy), but warnings — e.g. 'incompatible
+    for merge -> mkv' or 'requested format not available' — reach the log so
+    format/merge problems are never silent.
+    """
+
+    def debug(self, msg):
+        pass
+
+    def info(self, msg):
+        pass
+
+    def warning(self, msg):
+        logger.warning("yt_dlp: %s", msg)
+
+    def error(self, msg):
+        logger.error("yt_dlp: %s", msg)
 
 
 class YouTube:
@@ -35,6 +57,12 @@ class YouTube:
             r"|playlist\?list=[A-Za-z0-9_-]+|[A-Za-z0-9_-]{11}))\S*"
         )
         self.api_warned = False
+        # In-flight downloads keyed by video id, so concurrent requests for
+        # the same id share one download instead of colliding on the file.
+        self._inflight: dict[str, asyncio.Task] = {}
+        # Live waiter count per in-flight id. When it drops to zero (every
+        # caller cancelled), the yt-dlp progress hook aborts the worker thread.
+        self._waiters: dict[str, int] = {}
 
     def _usable_file(self, filename: str | Path) -> bool:
         path = Path(filename)
@@ -44,15 +72,64 @@ class YouTube:
         return bool(config.API_URL and config.API_KEY)
 
     def _cached_download(self, video_id: str, video: bool) -> str | None:
-        exts = ["mp4"] if video else ["webm", "mp3", "m4a"]
-        for ext in exts:
-            filename = Path("downloads") / f"{video_id}.{ext}"
-            if self._usable_file(filename):
-                return str(filename)
+        # Scan every extension for the id rather than a hardcoded whitelist.
+        # yt-dlp may write .mp4/.webm/.m4a/.mkv/... depending on the chosen
+        # format and merge; guessing extensions hid real files and caused a
+        # re-download loop. Return the most recently written usable match.
+        candidates = sorted(
+            Path("downloads").glob(f"{video_id}.*"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for path in candidates:
+            if self._usable_file(path):
+                return str(path)
         return None
 
     def cached_download(self, video_id: str, video: bool = False) -> str | None:
         return self._cached_download(video_id, video)
+
+    def _evict_downloads(
+        self, max_bytes: int = 4 * 1024**3, min_age: float = 3600
+    ) -> None:
+        """Cap the downloads/ dir by total size, oldest-first.
+
+        ponytail: LRU by mtime with a 1h floor — files touched within the
+        last hour are skipped so an in-progress or actively-streamed track is
+        never deleted (max track length is bounded by DURATION_LIMIT). If the
+        floor ever proves unsafe, upgrade to ref-counting against active calls.
+        """
+        downloads = Path("downloads")
+        if not downloads.is_dir():
+            return
+
+        files = []
+        total = 0
+        for p in downloads.iterdir():
+            if not p.is_file():
+                continue
+            try:
+                st = p.stat()
+            except OSError:
+                continue
+            files.append((p, st.st_mtime, st.st_size))
+            total += st.st_size
+
+        if total <= max_bytes:
+            return
+
+        now = time.time()
+        files.sort(key=lambda t: t[1])  # oldest first
+        for p, mtime, size in files:
+            if total <= max_bytes:
+                break
+            if now - mtime < min_age:
+                continue
+            try:
+                p.unlink()
+                total -= size
+            except OSError as ex:
+                logger.warning("Failed to evict %s: %s", p, ex)
 
     def _api_filename(self, video_id: str, video: bool) -> Path:
         ext = "mp4" if video else "mp3"
@@ -245,60 +322,112 @@ class YouTube:
             "quiet": True,
             "noplaylist": True,
             "geo_bypass": True,
-            "no_warnings": True,
+            # Route warnings/errors to the app logger instead of swallowing
+            # them, so merge/format problems are visible (no no_warnings).
+            "logger": _YDLLogger(),
             "overwrites": False,
-            "nocheckcertificate": True,
             "cookiefile": cookie,
+            # Explicit retry budget for an unattended bot (defaults are high).
+            "retries": 5,
+            "fragment_retries": 5,
+            "file_access_retries": 3,
             # Download up to 4 fragments concurrently — major speed boost
             # for DASH/HLS streams that are split into many small chunks.
             "concurrent_fragment_downloads": 4,
             # Fail fast on stalled connections instead of hanging indefinitely.
             "socket_timeout": 15,
-            # Skip checking every format's availability before selecting;
-            # trust the format string and only verify what we picked.
-            "check_formats": "selected",
+            # Don't pre-test every selected format; trust the selector and
+            # only download what we picked. Avoids an extra RTT per stream
+            # (and a transient 403/429 dropping a working format to /best).
+            "check_formats": False,
+            # YouTube now forces SABR on the default `web` client, so formats
+            # come back without a URL and the download silently fails. Pin
+            # player clients that still expose downloadable formats.
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["tv", "android_sdkless"],
+                }
+            },
         }
 
         if video:
             ydl_opts = {
                 **base_opts,
-                # Prefer h264+aac in a single mp4 container when possible
-                # (no post-merge step) then fall back to best available.
-                "format": (
-                    "bestvideo[height<=?720][width<=?1280][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]"
-                    "/"
-                    "bestvideo[height<=?720][width<=?1280][ext=mp4]+bestaudio"
-                    "/"
-                    "bestvideo[height<=?720]+bestaudio"
-                    "/"
-                    "best"
-                ),
+                # Cap at 720p, prefer h264/aac in an mp4 container; yt-dlp
+                # picks the best 720p h264 stream and merges to mp4. The
+                # real written path is resolved via extract_info below, so
+                # we never guess the extension.
+                "format": "bv*[height<=?720]+ba/b",
+                "format_sort": ["vcodec:h264", "acodec:aac", "ext:mp4"],
                 "merge_output_format": "mp4",
             }
         else:
             ydl_opts = {
                 **base_opts,
-                # Prefer native Opus/WebM (no transcoding), fall back to
-                # any best-audio format so the download never fails silently.
-                "format": "bestaudio[ext=webm][acodec=opus]/bestaudio[ext=m4a]/bestaudio/best",
+                # Prefer native Opus/WebM (no transcoding), fall back to any
+                # best-audio format so the download never fails silently.
+                "format": "ba/b",
+                "format_sort": ["acodec:opus", "ext:webm"],
             }
 
+        # Cooperative cancel: a to_thread worker can't be cancelled from the
+        # loop, so this hook (fired between fragments) aborts the download the
+        # moment the last waiter goes away — no wasted bandwidth on skipped
+        # tracks. Reads a plain dict int; the GIL makes that safe cross-thread.
+        def _progress_hook(_status):
+            if self._waiters.get(video_id, 0) <= 0:
+                raise yt_dlp.utils.DownloadCancelled()
+
+        opts = {**ydl_opts, "progress_hooks": [_progress_hook]}
+
         def _download():
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with yt_dlp.YoutubeDL(opts) as ydl:
                 try:
-                    ydl.download([url])
+                    info = ydl.extract_info(url, download=True)
+                except yt_dlp.utils.DownloadCancelled:
+                    return None
                 except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as ex:
                     logger.warning("yt_dlp download failed for %s: %s", video_id, ex)
                     return None
                 except Exception as ex:
                     logger.warning("Unexpected download error for %s: %s", video_id, ex)
                     return None
-            # yt_dlp writes the real extension via %(ext)s (audio may fall
-            # back to m4a, etc.), so resolve the actual file rather than
-            # assuming a single hardcoded extension.
-            return self._cached_download(video_id, video)
+            # Ask yt-dlp exactly what it wrote instead of guessing the
+            # extension — audio may fall back to .mp4, video merges may emit
+            # .mkv, etc. Fall back to a directory scan only if the info dict
+            # doesn't carry the path (older/edge extractor results).
+            requested = (info or {}).get("requested_downloads") or []
+            path = None
+            if requested:
+                candidate = requested[0].get("filepath")
+                if candidate and self._usable_file(candidate):
+                    path = str(candidate)
+            if path is None:
+                path = self._cached_download(video_id, video)
+            if path:
+                self._evict_downloads()
+            return path
 
-        downloaded = await asyncio.to_thread(_download)
-        if downloaded:
-            return downloaded
-        return None
+        # De-duplicate concurrent downloads of the same id (background play
+        # task + next-track prefetch can both fire for one video). Whoever
+        # arrives first owns the download; the rest await the same task.
+        # A per-id waiter count drives the cancel hook above.
+        self._waiters[video_id] = self._waiters.get(video_id, 0) + 1
+        try:
+            task = self._inflight.get(video_id)
+            if task is None:
+                task = asyncio.ensure_future(asyncio.to_thread(_download))
+                self._inflight[video_id] = task
+                task.add_done_callback(
+                    lambda t, v=video_id: self._inflight.pop(v, None)
+                    if self._inflight.get(v) is t
+                    else None
+                )
+            # shield: if this caller is cancelled (skip/queue change) the
+            # shared download keeps running for any other waiter instead of
+            # being torn down mid-flight.
+            return await asyncio.shield(task)
+        finally:
+            self._waiters[video_id] = self._waiters.get(video_id, 1) - 1
+            if self._waiters.get(video_id, 0) <= 0:
+                self._waiters.pop(video_id, None)
