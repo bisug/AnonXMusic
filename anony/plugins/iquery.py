@@ -25,7 +25,7 @@ async def inline_query_handler(_, query: types.InlineQuery):
             title = video.get("title", "Unknown Title").title()
             duration = video.get("duration", "N/A")
             views = video.get("viewCount", {}).get("short", "N/A")
-            thumbnail = video.get("thumbnails", [{}])[0].get("url", "").split("?")[0]
+            thumbnail = (video.get("thumbnails") or [{}])[0].get("url", "").split("?")[0]
             channel = video.get("channel", {}).get("name", "Unknown Channel")
             channellink = video.get("channel", {}).get("link", "https://youtube.com")
             link = video.get("link", "https://youtube.com")

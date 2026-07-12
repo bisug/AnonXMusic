@@ -3,6 +3,7 @@
 # This file is part of AnonXMusic
 
 
+import asyncio
 import os
 import platform
 import sys
@@ -42,7 +43,7 @@ async def _stats(_, m: types.Message):
             platform.system(),
             f"{process.memory_info().rss / 1024**2:.2f}",
             round(psutil.virtual_memory().total / (1024.0**3)),
-            process.cpu_percent(interval=1.0),
+            await asyncio.to_thread(process.cpu_percent, 1.0),
             psutil.cpu_count(),
             f"{storage.used / (1024.0**3):.2f}",
             f"{storage.total / (1024.0**3):.2f}",
