@@ -9,7 +9,7 @@ import psutil
 import speedtest
 
 from pyrogram import filters, types
-from anony import app, anon, boot, config, db, lang
+from anony import app, anon, boot, config, db, lang, logger
 from anony.helpers import buttons
 
 
@@ -32,7 +32,8 @@ def _run_speedtest() -> str:
 async def _network_speed() -> str:
     try:
         return await asyncio.to_thread(_run_speedtest)
-    except Exception:
+    except Exception as ex:
+        logger.debug("Speedtest failed: %r", ex)
         return "N/A"
 
 
@@ -40,7 +41,8 @@ async def _db_latency() -> str:
     start = time.perf_counter()
     try:
         await db.mongo.admin.command("ping")
-    except Exception:
+    except Exception as ex:
+        logger.warning("DB latency ping failed: %r", ex)
         return "N/A"
     return f"{round((time.perf_counter() - start) * 1000, 2)}ms"
 

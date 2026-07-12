@@ -5,7 +5,7 @@
 
 from pyrogram import filters, types
 
-from anony import app, db, lang
+from anony import app, db, lang, logger
 from anony.helpers import utils
 
 
@@ -51,7 +51,8 @@ async def _listsudo(_, m: types.Message):
         try:
             user = (await app.get_users(user_id)).mention
             txt += f"\n- {user}"
-        except Exception:
+        except Exception as ex:
+            logger.debug("Skipping sudoer %s in listsudo: %r", user_id, ex)
             continue
 
     await sent.edit_text(txt)

@@ -61,8 +61,8 @@ class Userbot(Client):
         client.mention = ub.me.mention
         try:
             await ub.join_chat(config.SUPPORT_CHANNEL)
-        except Exception:
-            pass
+        except Exception as ex:
+            logger.debug("Assistant %s could not join support channel: %s", num, ex)
         logger.info(f"Assistant {num} started as @{client.username}")
 
     async def boot(self):
@@ -83,8 +83,8 @@ class Userbot(Client):
         for client in self.clients:
             try:
                 await client.join_chat(config.SUPPORT_CHANNEL)
-            except Exception:
-                pass
+            except Exception as ex:
+                logger.debug("Assistant could not join support channel: %s", ex)
 
     async def exit(self):
         """

@@ -8,7 +8,7 @@ import asyncio
 
 from pyrogram import enums, errors, filters, types
 
-from anony import anon, app, config, db, lang, queue, tasks, userbot, yt
+from anony import anon, app, config, db, lang, logger, queue, tasks, userbot, yt
 from anony.helpers import buttons
 
 
@@ -36,7 +36,10 @@ async def auto_leave():
                     await asyncio.sleep(12)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except errors.FloodWait as ex:
+                await asyncio.sleep(ex.value)
+            except Exception as ex:
+                logger.warning("auto_leave failed for assistant: %r", ex)
                 continue
 
 
@@ -93,22 +96,26 @@ async def update_timer(length=10, sleep=12):
                 )
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except (errors.MessageNotModified, errors.MessageIdInvalid):
                 pass
+            except errors.FloodWait as ex:
+                await asyncio.sleep(ex.value)
+            except Exception as ex:
+                logger.warning("update_timer failed for chat %s: %r", chat_id, ex)
 
 
 async def vc_watcher(sleep=15):
     while True:
         await asyncio.sleep(sleep)
         for chat_id in list(db.active_calls):
-            client = await db.get_assistant(chat_id)
-            media = queue.get_current(chat_id)
-            if not media:
-                continue
-            participants = await client.get_participants(chat_id)
-            if len(participants) < 2 and media.time > 30:
-                _lang = await lang.get_lang(chat_id)
-                try:
+            try:
+                client = await db.get_assistant(chat_id)
+                media = queue.get_current(chat_id)
+                if not media:
+                    continue
+                participants = await client.get_participants(chat_id)
+                if len(participants) < 2 and media.time > 30:
+                    _lang = await lang.get_lang(chat_id)
                     sent = await app.edit_message_reply_markup(
                         chat_id=chat_id,
                         message_id=media.message_id,
@@ -118,8 +125,12 @@ async def vc_watcher(sleep=15):
                     )
                     await anon.stop(chat_id)
                     await sent.reply_text(_lang["auto_left"])
-                except errors.MessageIdInvalid:
-                    pass
+            except asyncio.CancelledError:
+                raise
+            except errors.MessageIdInvalid:
+                pass
+            except Exception as ex:
+                logger.warning("vc_watcher failed for chat %s: %r", chat_id, ex)
 
 
 if config.AUTO_END:

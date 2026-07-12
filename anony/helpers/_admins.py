@@ -5,9 +5,9 @@
 
 from functools import wraps
 
-from pyrogram import StopPropagation, enums, types
+from pyrogram import StopPropagation, enums, errors, types
 
-from anony import app, db
+from anony import app, db, logger
 
 
 def admin_check(func):
@@ -78,11 +78,20 @@ async def is_admin(chat_id: int, user_id: int) -> bool:
             enums.ChatMemberStatus.ADMINISTRATOR,
             enums.ChatMemberStatus.OWNER,
         ]
-    except Exception:
+    except errors.UserNotParticipant:
+        # Not in the chat → definitively not an admin; let the caller proceed.
+        return False
+    except Exception as ex:
+        logger.error(f"Failed to check admin status for {user_id} in {chat_id}: {ex}")
         raise StopPropagation
 
 
-async def reload_admins(chat_id: int) -> list[int]:
+async def reload_admins(chat_id: int) -> list[int] | None:
+    """Return the admin id list, or None if the reload failed.
+
+    None (rather than []) lets callers preserve any previously cached list
+    instead of treating a transient Telegram error as 'no admins'.
+    """
     try:
         admins = [
             admin
@@ -92,5 +101,6 @@ async def reload_admins(chat_id: int) -> list[int]:
             if not admin.user.is_bot
         ]
         return [admin.user.id for admin in admins]
-    except Exception:
-        return []
+    except Exception as ex:
+        logger.error(f"Failed to reload admins for {chat_id}: {ex}")
+        return None

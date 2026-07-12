@@ -134,6 +134,11 @@ class Telegram:
                 video=video,
             )
         except asyncio.CancelledError:
+            # Only the user-initiated inner-task cancel should be absorbed here.
+            # If the enclosing handler task itself is being cancelled (shutdown),
+            # let it propagate so cooperative cancellation still works.
+            if asyncio.current_task().cancelling():
+                raise
             return await sent.stop_propagation()
         finally:
             self.events.pop(msg_id, None)

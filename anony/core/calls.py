@@ -56,8 +56,8 @@ class TgCall(PyTgCalls):
 
         try:
             await client.leave_call(chat_id, close=False)
-        except Exception:
-            pass
+        except Exception as ex:
+            logger.warning("Failed to leave call for %s: %s", chat_id, ex)
 
 
     async def play_media(

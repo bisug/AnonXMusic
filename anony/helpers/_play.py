@@ -64,7 +64,8 @@ def checkUB(play):
                         await app.unban_chat_member(
                             chat_id=chat_id, user_id=client.id
                         )
-                    except Exception:
+                    except Exception as ex:
+                        logger.error(f"Failed to unban assistant in {chat_id}: {ex}")
                         return await m.reply_text(
                             m.lang["play_banned"].format(
                                 app.name,
@@ -81,8 +82,8 @@ def checkUB(play):
                     invite_link = m.chat.username
                     try:
                         await client.resolve_peer(invite_link)
-                    except Exception:
-                        pass
+                    except Exception as ex:
+                        logger.warning(f"resolve_peer failed for {chat_id}: {ex}")
                 else:
                     try:
                         invite_link = (await app.get_chat(chat_id)).invite_link

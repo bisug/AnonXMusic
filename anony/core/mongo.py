@@ -83,7 +83,13 @@ class MongoDB:
         from anony.helpers._admins import reload_admins
 
         if chat_id not in self.admin_list or reload:
-            self.admin_list[chat_id] = await reload_admins(chat_id)
+            admins = await reload_admins(chat_id)
+            # Preserve the existing cache on reload failure (admins is None) so
+            # a transient Telegram error doesn't strip every admin's rights.
+            if admins is not None:
+                self.admin_list[chat_id] = admins
+            elif chat_id not in self.admin_list:
+                self.admin_list[chat_id] = []
         return self.admin_list[chat_id]
 
     async def get_loop(self, chat_id: int) -> int:

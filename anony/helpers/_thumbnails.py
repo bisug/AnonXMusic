@@ -12,7 +12,7 @@ import aiohttp
 from PIL import (Image, ImageDraw, ImageEnhance,
                  ImageFilter, ImageFont, ImageOps)
 
-from anony import config
+from anony import config, logger
 from anony.helpers import Track
 
 
@@ -82,12 +82,15 @@ class Thumbnail:
             return await resp.read()
 
     async def _generate(self, song: Track, size=(1280, 720)) -> str:
+        output = Path("cache") / f"{song.id}.jpg"
         try:
-            output = Path("cache") / f"{song.id}.jpg"
             data = await self.download_thumb(song.thumbnail)
             await asyncio.to_thread(self.render, data, output, song, size)
             return str(output)
-        except Exception:
+        except Exception as ex:
+            logger.error(
+                f"Thumbnail generation failed for {song.id} ({song.thumbnail}): {ex}"
+            )
             return config.DEFAULT_THUMB
 
     def render(

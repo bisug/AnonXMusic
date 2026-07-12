@@ -150,7 +150,8 @@ class YouTube:
         try:
             _search = VideosSearch(query, limit=1, with_live=False)
             results = await _search.next()
-        except Exception:
+        except Exception as ex:
+            logger.warning("YouTube search failed for %r: %s", query, ex)
             return None
         if results and results["result"]:
             data = results["result"][0]
@@ -179,7 +180,8 @@ class YouTube:
         tracks = []
         try:
             plist = await Playlist.get(url)
-        except Exception:
+        except Exception as ex:
+            logger.warning("Failed to fetch playlist %s: %s", url, ex)
             return tracks
 
         for data in plist.get("videos", []):
@@ -284,10 +286,11 @@ class YouTube:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 try:
                     ydl.download([url])
-                except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError):
+                except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as ex:
+                    logger.warning("yt_dlp download failed for %s: %s", video_id, ex)
                     return None
                 except Exception as ex:
-                    logger.warning("Download failed: %s", ex)
+                    logger.warning("Unexpected download error for %s: %s", video_id, ex)
                     return None
             return filename if self._usable_file(filename) else None
 

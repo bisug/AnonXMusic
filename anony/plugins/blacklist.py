@@ -5,7 +5,7 @@
 
 from pyrogram import filters, types
 
-from anony import app, db, lang
+from anony import app, db, lang, logger
 
 
 @app.on_message(filters.command(["blacklist", "unblacklist", "whitelist"]) & app.sudoers)
@@ -20,7 +20,8 @@ async def _blacklist(_, m: types.Message):
             chat_id = int(chat_id)
         else:
             chat_id = (await app.get_chat(chat_id)).id
-    except Exception:
+    except Exception as ex:
+        logger.warning("Blacklist target resolution failed for %r: %r", m.command[1], ex)
         return await m.reply_text(m.lang["bl_invalid"])
 
     if m.command[0] == "blacklist":

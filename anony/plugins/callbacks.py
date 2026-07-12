@@ -7,7 +7,7 @@ import re
 
 from pyrogram import errors, filters, types
 
-from anony import anon, app, db, lang, queue, tg, yt
+from anony import anon, app, db, lang, logger, queue, tg, yt
 from anony.helpers import admin_check, buttons, can_manage_vc
 
 
@@ -126,11 +126,15 @@ async def _controls(_, query: types.CallbackQuery):
             keyboard = buttons.controls(
                 chat_id, status=status if action != "resume" else None
             )
-        await query.edit_message_text(
-            f"{mtext}\n\n<blockquote>{reply}</blockquote>", reply_markup=keyboard
-        )
-    except Exception:
+            await query.edit_message_text(
+                f"{mtext}\n\n<blockquote>{reply}</blockquote>", reply_markup=keyboard
+            )
+    except (errors.MessageNotModified, errors.MessageIdInvalid):
         pass
+    except Exception as ex:
+        logger.warning(
+            "controls '%s' update failed for chat %s: %r", action, chat_id, ex
+        )
 
 
 @app.on_callback_query(filters.regex("help") & ~app.bl_users)
