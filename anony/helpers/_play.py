@@ -34,6 +34,9 @@ def checkUB(play):
             len(m.command) > 1 and "-f" in m.command[1]
         )
         video = m.command[0][0] == "v" and config.VIDEO_PLAY
+        shuffle = any(
+            token.lower() in ("-shuffle", "-s") for token in m.command[1:]
+        )
         url = utils.get_url(m)
         if url and yt.invalid(url):
             return await m.reply_text(m.lang["play_not_found"].format(config.SUPPORT_CHAT))
@@ -123,6 +126,6 @@ def checkUB(play):
             except Exception:
                 pass
 
-        return await play(_, m, force, m3u8, video, url)
+        return await play(_, m, force, m3u8, video, url, shuffle)
 
     return wrapper

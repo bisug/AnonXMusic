@@ -168,26 +168,57 @@ class YouTube:
             )
         return None
 
-    async def playlist(self, limit: int, user: str, url: str, video: bool) -> list[Track | None]:
+    async def playlist(
+        self,
+        limit: int,
+        user: str,
+        url: str,
+        video: bool,
+        shuffle: bool = False,
+    ) -> list[Track]:
         tracks = []
         try:
             plist = await Playlist.get(url)
-            for data in plist["videos"][:limit]:
-                track = Track(
-                    id=data.get("id"),
+        except Exception:
+            return tracks
+
+        for data in plist.get("videos", []):
+            # Skip private/deleted/live entries individually so one bad
+            # video never aborts the whole playlist fetch.
+            vid = data.get("id")
+            title = data.get("title")
+            duration = data.get("duration")
+            link = data.get("link")
+            if not (vid and title and duration and link):
+                continue
+
+            try:
+                duration_sec = utils.to_seconds(duration)
+            except (ValueError, AttributeError):
+                continue
+
+            thumbs = data.get("thumbnails") or []
+            thumbnail = thumbs[-1].get("url", "").split("?")[0] if thumbs else None
+
+            tracks.append(
+                Track(
+                    id=vid,
                     channel_name=data.get("channel", {}).get("name", ""),
-                    duration=data.get("duration"),
-                    duration_sec=utils.to_seconds(data.get("duration")),
-                    title=data.get("title")[:25],
-                    thumbnail=data.get("thumbnails")[-1].get("url").split("?")[0],
-                    url=data.get("link").split("&list=")[0],
+                    duration=duration,
+                    duration_sec=duration_sec,
+                    title=title[:25],
+                    thumbnail=thumbnail,
+                    url=link.split("&list=")[0],
                     user=user,
                     view_count="",
                     video=video,
                 )
-                tracks.append(track)
-        except Exception:
-            pass
+            )
+            if len(tracks) >= limit:
+                break
+
+        if shuffle:
+            random.shuffle(tracks)
         return tracks
 
     async def download(self, video_id: str, video: bool = False) -> str | None:

@@ -100,6 +100,7 @@
     "playlist_fetch": "Fetching the playlist...\n\nPlease hold on.",
     "playlist_error": "Something went wrong while fetching the playlist.",
     "playlist_queued": "<u><b>Added {0} tracks from the playlist to queue:</b></u>\n\n",
+    "playlist_skipped": "<i>Skipped {0} track(s) (queue full or over the duration limit).</i>",
     "queue_curr": "<u><b>Currently playing:</b></u>\n\n<b>Title:</b> <a href={0}>{1}</a>\n<b>Duration:</b> {2}\n<b>Requested by:</b> {3}\n\n",
     "queue_item": "<b>{0}. Title:</b> {1}\n     - {2} min\n\n",
     "queue_fetching": "Fetching queue...",

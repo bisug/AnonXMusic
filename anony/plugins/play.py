@@ -12,13 +12,39 @@ from anony.helpers import buttons, utils
 from anony.helpers._play import checkUB
 
 
-def playlist_to_queue(chat_id: int, tracks: list) -> str:
+def playlist_to_queue(chat_id: int, tracks: list) -> tuple[str, int, int]:
+    """Queue playlist tracks, honoring the queue and duration limits.
+
+    Returns the expandable list body plus the number of tracks actually
+    added and the number skipped (queue full or over the duration limit).
+    """
     text = "<blockquote expandable>"
+    added = 0
+    skipped = 0
     for track in tracks:
+        if track.duration_sec > config.DURATION_LIMIT:
+            skipped += 1
+            continue
+        if len(queue.get_queue(chat_id)) >= config.QUEUE_LIMIT:
+            skipped += 1
+            continue
         pos = queue.add(chat_id, track)
         text += f"<b>{pos}.</b> {track.title}\n"
+        added += 1
     text = text[:1948] + "</blockquote>"
-    return text
+    return text, added, skipped
+
+
+async def announce_playlist(m: types.Message, tracks: list) -> None:
+    """Add playlist tracks to the queue and report the result to the chat."""
+    body, added, skipped = playlist_to_queue(m.chat.id, tracks)
+    text = m.lang["playlist_queued"].format(added) + body
+    if skipped:
+        text += "\n" + m.lang.get(
+            "playlist_skipped",
+            "<i>Skipped {0} track(s) (queue full or over the duration limit).</i>",
+        ).format(skipped)
+    await app.send_message(chat_id=m.chat.id, text=text)
 
 @app.on_message(
     filters.command(["play", "playforce", "vplay", "vplayforce"])
@@ -34,6 +60,7 @@ async def play_hndlr(
     m3u8: bool = False,
     video: bool = False,
     url: str = None,
+    shuffle: bool = False,
 ) -> None:
     sent = await m.reply_text(m.lang["play_searching"])
     file = None
@@ -55,14 +82,25 @@ async def play_hndlr(
         if "playlist" in url:
             await sent.edit_text(m.lang["playlist_fetch"])
             tracks = await yt.playlist(
-                config.PLAYLIST_LIMIT, mention, url, video
+                config.PLAYLIST_LIMIT, mention, url, video, shuffle
             )
 
             if not tracks:
                 return await sent.edit_text(m.lang["playlist_error"])
 
-            file = tracks[0]
-            tracks.remove(file)
+            # Pick the first within-limit track to play immediately. We don't
+            # want an over-long first video to abort the whole playlist — and
+            # with shuffle on the "first" track would otherwise be random.
+            idx = next(
+                (i for i, t in enumerate(tracks) if t.duration_sec <= config.DURATION_LIMIT),
+                None,
+            )
+            if idx is None:
+                return await sent.edit_text(
+                    m.lang["play_duration_limit"].format(config.DURATION_LIMIT // 60)
+                )
+
+            file = tracks.pop(idx)
             file.message_id = sent.id
         else:
             file = await yt.search(url, sent.id, video=video)
@@ -119,11 +157,7 @@ async def play_hndlr(
                 ),
             )
             if tracks:
-                added = playlist_to_queue(m.chat.id, tracks)
-                await app.send_message(
-                    chat_id=m.chat.id,
-                    text=m.lang["playlist_queued"].format(len(tracks)) + added,
-                )
+                await announce_playlist(m, tracks)
             return
 
     if not file.file_path:
@@ -144,9 +178,5 @@ async def play_hndlr(
     await anon.play_media(chat_id=m.chat.id, message=sent, media=file)
     if not tracks:
         return
-    added = playlist_to_queue(m.chat.id, tracks)
-    await app.send_message(
-        chat_id=m.chat.id,
-        text=m.lang["playlist_queued"].format(len(tracks)) + added,
-    )
+    await announce_playlist(m, tracks)
 
