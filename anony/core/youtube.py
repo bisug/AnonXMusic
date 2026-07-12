@@ -303,7 +303,9 @@ class YouTube:
             random.shuffle(tracks)
         return tracks
 
-    async def download(self, video_id: str, video: bool = False) -> str | None:
+    async def download(
+        self, video_id: str, video: bool = False, prefetch: bool = False
+    ) -> str | None:
         url = self.base + video_id
 
         cached = self._cached_download(video_id, video)
@@ -333,7 +335,9 @@ class YouTube:
             "file_access_retries": 3,
             # Download up to 4 fragments concurrently — major speed boost
             # for DASH/HLS streams that are split into many small chunks.
-            "concurrent_fragment_downloads": 4,
+            # Prefetch (next-track, runs *during* live playback) drops to 1 so
+            # it can't parallel-hammer CPU/IO/bandwidth and stutter the encoder.
+            "concurrent_fragment_downloads": 1 if prefetch else 4,
             # Fail fast on stalled connections instead of hanging indefinitely.
             "socket_timeout": 15,
             # Don't pre-test every selected format; trust the selector and

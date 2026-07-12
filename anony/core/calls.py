@@ -143,7 +143,9 @@ class TgCall(PyTgCalls):
                     old = self._prefetch.pop(chat_id, None)
                     if old and not old.done():
                         old.cancel()
-                    task = asyncio.create_task(yt.download(_next.id, video=_next.video))
+                    task = asyncio.create_task(
+                        yt.download(_next.id, video=_next.video, prefetch=True)
+                    )
                     self._prefetch[chat_id] = task
                     task.add_done_callback(
                         lambda t, c=chat_id: self._prefetch.pop(c, None)
