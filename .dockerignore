@@ -1,12 +1,44 @@
+# Keep the build context small and the image free of secrets/dev cruft.
+# Applies to Heroku (container stack), Render (Docker), and VPS docker compose.
+
+# --- Secrets / credentials ---
 .env
-.cache
-log.txt
-.DS_Store
-venv/
-.venv/
-cache/
-downloads/
-__pycache__/
-anony/cookies/*.txt
+.env.*
 *.session
 *.session-journal
+
+# --- Runtime data / caches ---
+.cache
+cache/
+downloads/
+log.txt
+*.log
+anony/cookies/*.txt
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# --- VCS / CI / editors ---
+.git
+.gitignore
+.gitattributes
+.github
+.idea
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Deploy manifests not needed inside the image ---
+docker-compose.yml
+render.yaml
+app.json
+heroku.yml
+Procfile
+.slugignore
+setup

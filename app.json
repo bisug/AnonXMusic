@@ -4,6 +4,12 @@
     "logo": "https://te.legra.ph/file/b8a0c1a00db3e57522b53.jpg",
     "keywords": ["python3", "telegram", "bot", "music-bot"],
     "stack": "container",
+    "formation": {
+        "worker": {
+            "quantity": 1,
+            "size": "basic"
+        }
+    },
     "env": {
         "API_ID": {
             "description": "Get this value from https://my.telegram.org",
@@ -57,6 +63,11 @@
         },
         "API_KEY": {
             "description": "Optional API key for the YouTube download API fallback.",
+            "value": "",
+            "required": false
+        },
+        "COOKIES_URL": {
+            "description": "Optional space-separated batbin.me URL(s) with YouTube cookies, used when playback needs cookies.",
             "value": "",
             "required": false
         }

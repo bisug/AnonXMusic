@@ -40,7 +40,7 @@ Built with Python, Pyrogram, and Py-TgCalls, it’s optimized for reliability an
 
 <h3>✔️ Prerequisites</h3>
 
-- <a href="https://www.python.org">Python 3.10+</a> installed  
+- <a href="https://www.python.org">Python 3.13+</a> installed  
 - <a href="https://deno.com/">deno</a> & <a href="https://ffmpeg.org/">ffmpeg</a> installed on your system  
 - Required variables mentioned in <a href="https://github.com/bisug/AnonXMusic/blob/master/sample.env">sample.env</a>
 
@@ -89,6 +89,27 @@ mv sample.env .env
 uv run python3 -m anony
 
 > ⭐ or use Git Bash or WSL to run `bash start`.
+```
+
+<h4>🐳 VPS with Docker Compose</h4>
+
+The included <code>docker-compose.yml</code> is the easiest way to run the bot on a VPS with automatic restarts.
+
+```bash
+git clone https://github.com/bisug/AnonXMusic.git && cd AnonXMusic
+
+# Configure environment variables
+cp sample.env .env
+# Edit .env with your credentials
+
+# Build and start in the background
+docker compose up -d --build
+
+# Follow logs
+docker compose logs -f
+
+# Stop the bot
+docker compose down
 ```
 
 </details>
@@ -145,6 +166,10 @@ Use <code>COOKIES_URL</code> only if your deployment needs cookies for YouTube p
     <a href="https://dashboard.heroku.com/new?template=https://github.com/bisug/AnonXMusic.git">
         <img src="https://img.shields.io/badge/Deploy%20On%20Heroku-black?style=for-the-badge&logo=heroku"/>
     </a>
+
+This repo ships a container-stack <code>heroku.yml</code> and <code>app.json</code>. The bot runs as a <code>worker</code> dyno (no web process), and <code>app.json</code> provisions one <code>basic</code> worker automatically on deploy.
+
+> Heroku has no free tier — a paid <code>basic</code> (or higher) worker dyno is required. If the bot doesn't start, ensure the worker is scaled: `heroku ps:scale worker=1 -a <your-app>`.
 </details>
 
 <hr>

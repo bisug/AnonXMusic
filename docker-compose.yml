@@ -1,0 +1,21 @@
+# Docker Compose for running AnonXMusic on a VPS.
+# Usage:
+#   1. cp sample.env .env   &&  edit .env with your values
+#   2. docker compose up -d --build
+#   3. docker compose logs -f       # view logs
+#   4. docker compose down          # stop
+services:
+  anonxmusic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: anonxmusic:latest
+    container_name: anonxmusic
+    env_file:
+      - .env
+    restart: unless-stopped
+    # Persist downloaded cookies across restarts (optional).
+    volumes:
+      - ./anony/cookies:/app/anony/cookies
+    # This bot has no inbound HTTP server; it connects out to Telegram only.
+    # No ports are published on purpose.

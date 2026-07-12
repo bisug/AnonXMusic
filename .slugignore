@@ -1,0 +1,22 @@
+# .slugignore trims files from the Heroku slug.
+#
+# NOTE: This repo deploys with the *container* stack (see app.json "stack":
+# "container" + heroku.yml), and Heroku IGNORES .slugignore for container
+# builds — .dockerignore controls the image instead. This file only takes
+# effect if you switch to a classic buildpack deploy.
+
+.github
+.git
+docker-compose.yml
+render.yaml
+Dockerfile
+.dockerignore
+setup
+LICENSE
+*.log
+log.txt
+downloads
+cache
+.venv
+venv
+__pycache__
