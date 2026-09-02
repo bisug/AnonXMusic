@@ -72,6 +72,8 @@ async def update_timer(length=10, sleep=12):
                 if not media:
                     continue
                 duration, message_id = media.duration_sec, media.message_id
+                # Live streams (duration 0) have no progress bar and no
+                # end-of-track prefetch — the stream runs until skipped.
                 if not duration or not message_id or not media.time:
                     continue
                 remove = False
@@ -82,7 +84,11 @@ async def update_timer(length=10, sleep=12):
 
                 if remaining <= 30:
                     next = queue.get_next(chat_id, check=True)
-                    if next and not next.file_path:
+                    if (
+                        next
+                        and not next.file_path
+                        and not getattr(next, "is_live", False)
+                    ):
                         next.file_path = await yt.download(next.id, video=next.video)
 
                 if remaining < 10:

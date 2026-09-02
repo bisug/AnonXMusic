@@ -101,12 +101,21 @@ class TgCall(PyTgCalls):
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
+        # Live streams resolve to HLS URLs, never local files. YouTube live
+        # HLS is demuxed: stream_url() returns "video|audio" for video mode
+        # (two variant playlists) or a single audio URL otherwise.
+        is_live = getattr(media, "is_live", False)
+        media_path = media.file_path
+        audio_path = None
+        if is_live and "|" in str(media.file_path):
+            media_path, audio_path = media.file_path.split("|", 1)
+
         # pytgcalls injects ffmpeg_parameters before -i (input options).
         # For network streams (m3u8/HLS, where file_path is a URL) add
         # reconnect flags so a transient blip doesn't end playback; for
         # local files they'd be ignored, so only apply to URL inputs.
         ffmpeg_args = []
-        if str(media.file_path).startswith(("http://", "https://")):
+        if str(media_path).startswith(("http://", "https://")):
             ffmpeg_args.append(
                 "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
             )
@@ -114,7 +123,8 @@ class TgCall(PyTgCalls):
             ffmpeg_args.append(f"-ss {seek_time}")
 
         stream = types.MediaStream(
-            media_path=media.file_path,
+            media_path=media_path,
+            audio_path=audio_path,
             audio_parameters=types.AudioQuality.HIGH,
             video_parameters=types.VideoQuality.HD_720p,
             audio_flags=types.MediaStream.Flags.REQUIRED,
@@ -137,9 +147,17 @@ class TgCall(PyTgCalls):
                 media.time = 1
                 await db.add_call(chat_id)
                 # Pre-fetch the next queued track in the background so there
-                # is no download gap when the current track ends.
+                # is no download gap when the current track ends. Skipped for
+                # live streams — a live track never ends on its own, and a
+                # parallel download would fight the stream for bandwidth.
                 _next = queue.get_next(chat_id, check=True)
-                if _next and isinstance(_next, Track) and not _next.file_path:
+                if (
+                    not is_live
+                    and _next
+                    and isinstance(_next, Track)
+                    and not _next.is_live
+                    and not _next.file_path
+                ):
                     old = self._prefetch.pop(chat_id, None)
                     if old and not old.done():
                         old.cancel()
@@ -155,7 +173,7 @@ class TgCall(PyTgCalls):
                 text = _lang["play_media"].format(
                     media.url,
                     media.title,
-                    media.duration,
+                    "🔴 LIVE" if is_live else media.duration,
                     media.user,
                 )
                 keyboard = buttons.controls(chat_id)
@@ -254,7 +272,10 @@ class TgCall(PyTgCalls):
         _lang = await lang.get_lang(chat_id)
         msg = await app.send_message(chat_id=chat_id, text=_lang["play_next"])
         if not media.file_path:
-            media.file_path = await yt.download(media.id, video=media.video)
+            if getattr(media, "is_live", False):
+                media.file_path = await yt.stream_url(media.id, video=media.video)
+            else:
+                media.file_path = await yt.download(media.id, video=media.video)
             if not media.file_path:
                 await msg.edit_text(
                     _lang["error_no_file"].format(config.SUPPORT_CHAT)

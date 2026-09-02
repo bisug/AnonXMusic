@@ -34,7 +34,14 @@ class Utilities:
             return f"{bytes / 1024:.2f} KB"
 
     def to_seconds(self, time: str) -> int:
-        parts = [int(p) for p in time.strip().split(":")]
+        # Live entries carry no duration ("LIVE"/None) — treat as 0 so the
+        # caller's own live handling (skip limit, skip timer) kicks in.
+        if not time or not time.strip(":").strip():
+            return 0
+        try:
+            parts = [int(p) for p in time.strip().split(":")]
+        except ValueError:
+            return 0
         return sum(value * 60**i for i, value in enumerate(reversed(parts)))
 
 

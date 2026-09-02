@@ -121,19 +121,27 @@ async def play_hndlr(
     if not file:
         return await sent.edit_text(m.lang["play_usage"])
 
-    if file.duration_sec > config.DURATION_LIMIT:
+    # Live streams have no duration — the limit doesn't apply.
+    if file.duration_sec > config.DURATION_LIMIT and not getattr(file, "is_live", False):
         return await sent.edit_text(
             m.lang["play_duration_limit"].format(config.DURATION_LIMIT // 60)
         )
 
     # Kick off the download immediately in the background — before queue /
     # logger checks — so those local operations run while the file is
-    # already being fetched over the network.
-    if not file.file_path and not yt.cached_download(file.id, video=video):
+    # already being fetched over the network. Live streams skip this:
+    # they are never downloaded, only resolved to a stream URL.
+    if (
+        not file.is_live
+        and not file.file_path
+        and not yt.cached_download(file.id, video=video)
+    ):
         _dl_task = asyncio.create_task(yt.download(file.id, video=video))
 
     if await db.is_logger():
-        await utils.play_log(m, sent.link, file.title, file.duration)
+        await utils.play_log(
+            m, sent.link, file.title, "🔴 LIVE" if file.is_live else file.duration
+        )
 
     file.user = mention
     if force:
@@ -149,7 +157,7 @@ async def play_hndlr(
                     position,
                     file.url,
                     file.title,
-                    file.duration,
+                    "🔴 LIVE" if file.is_live else file.duration,
                     m.from_user.mention,
                 ),
                 reply_markup=buttons.play_queued(
@@ -161,16 +169,21 @@ async def play_hndlr(
             return
 
     if not file.file_path:
-        file.file_path = yt.cached_download(file.id, video=video)
-        if not file.file_path:
-            if _dl_task:
-                # Download already running — just wait for it.
-                await sent.edit_text(m.lang["play_downloading"])
-                file.file_path = await _dl_task
-                _dl_task = None
-            else:
-                await sent.edit_text(m.lang["play_downloading"])
-                file.file_path = await yt.download(file.id, video=video)
+        if file.is_live:
+            # Resolve the live stream to its HLS URL(s) — no download.
+            await sent.edit_text(m.lang["play_downloading"])
+            file.file_path = await yt.stream_url(file.id, video=video)
+        else:
+            file.file_path = yt.cached_download(file.id, video=video)
+            if not file.file_path:
+                if _dl_task:
+                    # Download already running — just wait for it.
+                    await sent.edit_text(m.lang["play_downloading"])
+                    file.file_path = await _dl_task
+                    _dl_task = None
+                else:
+                    await sent.edit_text(m.lang["play_downloading"])
+                    file.file_path = await yt.download(file.id, video=video)
 
     if _dl_task and not _dl_task.done():
         _dl_task.cancel()

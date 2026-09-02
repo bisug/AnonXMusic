@@ -223,9 +223,60 @@ class YouTube:
     def invalid(self, url: str) -> bool:
         return bool(re.match(self.iregex, url))
 
+    async def stream_url(self, video_id: str, video: bool = False) -> str | None:
+        """Resolve a live stream to its HLS URL(s) without downloading.
+
+        Live HLS can't be downloaded to a file (it never ends), so the URL is
+        handed straight to ffmpeg. YouTube live HLS is demuxed: video and
+        audio are separate variant playlists. Returns the audio variant URL,
+        or a "video|audio" pair for video mode (play_media splits them).
+        """
+        url = self.base + video_id
+        cookie = self.get_cookies()
+        opts = {
+            "quiet": True,
+            "noplaylist": True,
+            "geo_bypass": True,
+            "logger": _YDLLogger(),
+            "cookiefile": cookie,
+            "socket_timeout": 15,
+            "retries": 5,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["visionos", "tv_downgraded"],
+                }
+            },
+            # Live HLS only: pick the best audio variant, or the <=720p video
+            # variant + best audio for video mode. The master playlist is NOT
+            # used — ffmpeg fetches all 7 variant playlists in parallel and
+            # googlevideo rate-limits the keepalive requests.
+            "format": "bv*[height<=?720]+ba/b" if video else "ba/b",
+        }
+
+        def _extract():
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+            if not info or not info.get("is_live"):
+                return None
+            requested = info.get("requested_formats") or [info]
+            urls = [f.get("url") for f in requested if f.get("url")]
+            if not urls:
+                return None
+            return "|".join(urls)
+
+        try:
+            return await asyncio.to_thread(_extract)
+        except Exception as ex:
+            logger.warning("Live stream URL extraction failed for %s: %s", video_id, ex)
+            return None
+
     async def search(self, query: str, m_id: int, video: bool = False) -> Track | None:
         try:
-            _search = VideosSearch(query, limit=1, with_live=False)
+            # with_live=True so direct live-stream URLs resolve to the live
+            # video instead of a random related VOD (py_yt's scraper search
+            # can't see live results otherwise). Live entries come back with
+            # duration=None / viewCount=None.
+            _search = VideosSearch(query, limit=1, with_live=True)
             results = await _search.next()
         except Exception as ex:
             logger.warning("YouTube search failed for %r: %s", query, ex)
@@ -235,17 +286,20 @@ class YouTube:
             title = data.get("title") or "Unknown"
             thumbs = data.get("thumbnails") or []
             thumbnail = thumbs[-1].get("url", "").split("?")[0] if thumbs else None
+            # Live entries have no duration and no view count.
+            is_live = data.get("duration") is None
             return Track(
                 id=data.get("id"),
                 channel_name=data.get("channel", {}).get("name"),
-                duration=data.get("duration"),
-                duration_sec=utils.to_seconds(data.get("duration")),
+                duration="LIVE" if is_live else data.get("duration"),
+                duration_sec=0 if is_live else utils.to_seconds(data.get("duration")),
                 message_id=m_id,
                 title=title[:25],
                 thumbnail=thumbnail,
                 url=data.get("link"),
-                view_count=data.get("viewCount", {}).get("short"),
+                view_count=data.get("viewCount", {}).get("short") or "",
                 video=video,
+                is_live=is_live,
             )
         return None
 
@@ -266,7 +320,9 @@ class YouTube:
 
         for data in plist.get("videos", []):
             # Skip private/deleted/live entries individually so one bad
-            # video never aborts the whole playlist fetch.
+            # video never aborts the whole playlist fetch. Live entries are
+            # skipped too: a live stream inside a playlist would hang the
+            # sequential queue download forever.
             vid = data.get("id")
             title = data.get("title")
             duration = data.get("duration")
