@@ -113,8 +113,8 @@ class Language:
                 except (errors.ChannelPrivate, errors.MessageIdInvalid, errors.MessageNotModified):
                     return
                 except (
-                    errors.Forbidden, errors.exceptions.Forbidden,
-                    errors.ChatWriteForbidden, errors.exceptions.ChatWriteForbidden,
+                    errors.Forbidden,
+                    errors.ChatWriteForbidden,
                 ):
                     return
 

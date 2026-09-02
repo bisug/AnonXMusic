@@ -4,11 +4,10 @@
 
 
 from collections import defaultdict, deque
-from typing import Union
 
 from ._dataclass import Media, Track
 
-MediaItem = Union[Media, Track]
+MediaItem = Media | Track
 
 
 class Queue:

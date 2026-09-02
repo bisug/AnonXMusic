@@ -119,7 +119,9 @@ async def vc_watcher(sleep=15):
                 media = queue.get_current(chat_id)
                 if not media:
                     continue
-                participants = await client.get_participants(chat_id)
+                # kurigram 2.2 removed get_participants; get_call_members
+                # yields GroupCallMember objects for the active group call.
+                participants = [m async for m in client.get_call_members(chat_id)]
                 if len(participants) < 2 and media.time > 30:
                     _lang = await lang.get_lang(chat_id)
                     # The status-markup edit is cosmetic; if the now-playing

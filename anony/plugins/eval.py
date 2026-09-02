@@ -10,7 +10,7 @@ import sys
 import uuid
 import traceback
 from html import escape
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from pyrogram import filters, types
 
@@ -28,7 +28,7 @@ async def eval_handler(_, message: types.Message):
     code = message.text.split(None, 1)[1]
     out_buf = io.StringIO()
 
-    async def _eval_code() -> Tuple[str, Optional[str]]:
+    async def _eval_code() -> tuple[str, str | None]:
         async def send(*args: Any, **kwargs: Any) -> types.Message:
             return await message.reply_text(*args, **kwargs)
 
