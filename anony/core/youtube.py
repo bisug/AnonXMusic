@@ -344,12 +344,15 @@ class YouTube:
             # only download what we picked. Avoids an extra RTT per stream
             # (and a transient 403/429 dropping a working format to /best).
             "check_formats": False,
-            # YouTube now forces SABR on the default `web` client, so formats
-            # come back without a URL and the download silently fails. Pin
-            # player clients that still expose downloadable formats.
+            # YouTube forces SABR on most clients, so formats come back
+            # without a URL and the download silently fails. yt-dlp 2026.6+
+            # removed android_sdkless; visionos is the new default no-token
+            # client (full format table, no PO token, no JS player needed).
+            # tv_downgraded is the cookie-aware fallback for age/region
+            # restricted videos.
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["tv", "android_sdkless"],
+                    "player_client": ["visionos", "tv_downgraded"],
                 }
             },
         }
