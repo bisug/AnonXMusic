@@ -43,34 +43,6 @@ install_pkgs() {
     fi
 }
 
-install_deno() {
-    pprint "\n\nInstalling Deno...\n" "cblue"
-
-    if command -v deno &>/dev/null; then
-        pprint "Deno already installed.\n" "cgreen"
-        return
-    fi
-
-    if curl -fsSL https://deno.land/install.sh | sh; then
-        deno_path="$HOME/.deno/bin"
-
-        if ! grep -q 'DENO_INSTALL' "$HOME/.bashrc"; then
-            {
-                echo 'export DENO_INSTALL="$HOME/.deno"'
-                echo 'export PATH="$DENO_INSTALL/bin:$PATH"'
-            } >> "$HOME/.bashrc"
-            pprint "Deno path added to ~/.bashrc\n" "cyellow"
-        fi
-
-        export DENO_INSTALL="$HOME/.deno"
-        export PATH="$DENO_INSTALL/bin:$PATH"
-
-        pprint "Deno installation complete.\n" "cgreen"
-    else
-        pprint "Deno installation failed.\n" "cred"
-    fi
-}
-
 install_uv() {
     if ! command -v uv &>/dev/null; then
         pprint "\nInstalling uv...\n" "cblue"
@@ -115,7 +87,6 @@ pprint "Welcome to the AnonXMusic Installation Setup\n\n" "cmagenta"
 update
 install_pkgs python3 python3-venv ffmpeg curl unzip
 install_uv || exit 1
-install_deno
 install_py
 
 pprint "\nAnonXMusic Installation Completed.\n" "cgreen"

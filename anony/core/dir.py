@@ -51,8 +51,8 @@ def ensure_dirs():
     """
     Ensure that the necessary directories exist.
     """
-    if not shutil.which("deno") or not shutil.which("ffmpeg"):
-        raise RuntimeError("Deno and FFmpeg must be installed and accessible in the system PATH.")
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("FFmpeg must be installed and accessible in the system PATH.")
 
     _assert_ffmpeg_version()
 
