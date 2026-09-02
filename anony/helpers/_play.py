@@ -74,7 +74,7 @@ def checkUB(play):
         ):
             return await m.reply_text(m.lang["play_usage"])
 
-        if len(queue.get_queue(chat_id)) >= config.QUEUE_LIMIT:
+        if queue.size(chat_id) >= config.QUEUE_LIMIT:
             return await m.reply_text(m.lang["play_queue_full"].format(config.QUEUE_LIMIT))
 
         force = m.command[0].endswith("force") or (

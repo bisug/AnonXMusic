@@ -16,7 +16,7 @@ from anony.helpers import Media, buttons, utils
 
 class Telegram:
     def __init__(self):
-        self.active = []
+        self.active = set()
         self.events = {}
         self.last_edit = {}
         self.active_tasks = {}
@@ -111,13 +111,13 @@ class Telegram:
                     await sent.edit_text(sent.lang["dl_active"])
                     return await sent.stop_propagation()
 
-                self.active.append(file_id)
+                self.active.add(file_id)
                 task = asyncio.create_task(
                     msg.download(file_name=file_path, progress=progress)
                 )
                 self.active_tasks[msg_id] = task
                 await task
-                if file_id in self.active: self.active.remove(file_id)
+                self.active.discard(file_id)
                 self.active_tasks.pop(msg_id, None)
                 await sent.edit_text(
                     sent.lang["dl_complete"].format(round(time.time() - start_time, 2))
@@ -143,7 +143,7 @@ class Telegram:
         finally:
             self.events.pop(msg_id, None)
             self.last_edit.pop(msg_id, None)
-            if file_id in self.active: self.active.remove(file_id)
+            self.active.discard(file_id)
 
 
     async def process_m3u8(self, url: str, msg_id: int, video: bool) -> Media:

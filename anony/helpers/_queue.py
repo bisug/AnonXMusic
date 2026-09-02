@@ -19,6 +19,10 @@ class Queue:
         self.queues[chat_id].append(item)
         return len(self.queues[chat_id]) - 1
 
+    def size(self, chat_id: int) -> int:
+        """O(1) queue length — get_queue() copies the whole deque."""
+        return len(self.queues[chat_id])
+
     def check_item(self, chat_id: int, item_id: str) -> tuple[int, MediaItem | None]:
         """Check if an item with the given ID exists in the queue."""
         pos, track = next(

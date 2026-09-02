@@ -25,7 +25,7 @@ def playlist_to_queue(chat_id: int, tracks: list) -> tuple[str, int, int]:
         if track.duration_sec > config.DURATION_LIMIT:
             skipped += 1
             continue
-        if len(queue.get_queue(chat_id)) >= config.QUEUE_LIMIT:
+        if queue.size(chat_id) >= config.QUEUE_LIMIT:
             skipped += 1
             continue
         pos = queue.add(chat_id, track)

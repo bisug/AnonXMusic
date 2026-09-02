@@ -92,14 +92,22 @@ class YouTube:
     def _evict_downloads(
         self, max_bytes: int = 4 * 1024**3, min_age: float = 3600
     ) -> None:
-        """Cap the downloads/ dir by total size, oldest-first.
+        """Cap the downloads/ and cache/ dirs by total size, oldest-first.
+
+        cache/ holds generated thumbnails (~200KB each) that were previously
+        never evicted — unbounded disk growth over months of uptime.
 
         ponytail: LRU by mtime with a 1h floor — files touched within the
         last hour are skipped so an in-progress or actively-streamed track is
         never deleted (max track length is bounded by DURATION_LIMIT). If the
         floor ever proves unsafe, upgrade to ref-counting against active calls.
         """
-        downloads = Path("downloads")
+        for dirname in ("downloads", "cache"):
+            self._evict_dir(Path(dirname), max_bytes, min_age)
+
+    def _evict_dir(
+        self, downloads: Path, max_bytes: int, min_age: float
+    ) -> None:
         if not downloads.is_dir():
             return
 

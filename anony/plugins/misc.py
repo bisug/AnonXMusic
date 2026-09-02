@@ -89,7 +89,13 @@ async def update_timer(length=10, sleep=12):
                         and not next.file_path
                         and not getattr(next, "is_live", False)
                     ):
-                        next.file_path = await yt.download(next.id, video=next.video)
+                        # Fire-and-forget: an inline await here would block
+                        # progress-bar updates for EVERY chat until the
+                        # download finishes. yt's inflight dedup makes
+                        # repeated ticks safe.
+                        asyncio.create_task(
+                            yt.download(next.id, video=next.video, prefetch=True)
+                        )
 
                 if remaining < 10:
                     remove = True

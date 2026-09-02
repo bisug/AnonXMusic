@@ -22,8 +22,11 @@ async def _help(_, m: types.Message):
 @app.on_message(filters.command(["start"]))
 @lang.language()
 async def start(_, message: types.Message):
-    if message.from_user.id in app.bl_users and message.from_user.id not in db.notified:
-        return await message.reply_text(message.lang["bl_user_notify"])
+    if message.from_user.id in app.bl_users:
+        if message.from_user.id not in db.notified:
+            db.notified.append(message.from_user.id)
+            return await message.reply_text(message.lang["bl_user_notify"])
+        return
 
     private = message.chat.type == enums.ChatType.PRIVATE
     if private and not await db.is_user(message.from_user.id):
