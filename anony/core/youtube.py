@@ -219,6 +219,72 @@ class YouTube:
                 except Exception:
                     pass
 
+    async def _download_nexgen(self, video_id: str, video: bool = False) -> str | None:
+        """Third API fallback: NexGen video API.
+
+        GET {NEXGEN_URL}/video/{id}?api=KEY returns {status, link};
+        link is a direct stream URL (WebM) to download.
+        """
+        if not config.NEXGEN_KEY:
+            return None
+
+        filename = self._api_filename(video_id, video)
+        if self._usable_file(filename):
+            return str(filename)
+
+        tmpfile = filename.with_suffix(filename.suffix + ".part")
+        try:
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    f"{config.NEXGEN_URL}/video/{video_id}",
+                    params={"api": config.NEXGEN_KEY},
+                ) as resp:
+                    if resp.status != 200:
+                        logger.warning(
+                            "NexGen fallback failed for %s: HTTP %s",
+                            video_id,
+                            resp.status,
+                        )
+                        return None
+                    data = await resp.json()
+
+            link = data.get("link")
+            if not link or data.get("status") != "done":
+                logger.warning("NexGen fallback: bad response for %s: %s", video_id, data)
+                return None
+
+            dl_timeout = aiohttp.ClientTimeout(total=600 if video else 300)
+            async with aiohttp.ClientSession(timeout=dl_timeout) as session:
+                async with session.get(link) as resp:
+                    if resp.status != 200:
+                        logger.warning(
+                            "NexGen stream fetch failed for %s: HTTP %s",
+                            video_id,
+                            resp.status,
+                        )
+                        return None
+                    Path("downloads").mkdir(parents=True, exist_ok=True)
+                    with open(tmpfile, "wb") as fw:
+                        async for chunk in resp.content.iter_chunked(131072):
+                            if chunk:
+                                fw.write(chunk)
+
+            if not self._usable_file(tmpfile):
+                return None
+
+            tmpfile.replace(filename)
+            return str(filename)
+        except Exception as ex:
+            logger.warning("NexGen fallback error for %s: %s", video_id, ex)
+            return None
+        finally:
+            if tmpfile.exists():
+                try:
+                    tmpfile.unlink()
+                except Exception:
+                    pass
+
     async def _download_api(self, video_id: str, video: bool = False) -> str | None:
         if not self._api_enabled():
             if not self.api_warned:
@@ -475,6 +541,10 @@ class YouTube:
                 return downloaded
 
         downloaded = await self._download_onegrab(video_id, video=video)
+        if downloaded:
+            return downloaded
+
+        downloaded = await self._download_nexgen(video_id, video=video)
         if downloaded:
             return downloaded
 
