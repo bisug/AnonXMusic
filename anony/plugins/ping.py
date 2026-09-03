@@ -52,7 +52,9 @@ async def _db_latency() -> str:
 async def _ping(_, m: types.Message):
     start = time.perf_counter()
     sent = await m.reply_text(m.lang["pinging"])
-    network_speed_task = asyncio.create_task(_network_speed())
+    # Speedtest takes 10-30s — run it only for /ping speed, not every ping.
+    full = any(tok in ("-s", "speed", "full") for tok in m.command[1:])
+    network_speed_task = asyncio.create_task(_network_speed()) if full else None
     db_latency_task = asyncio.create_task(_db_latency())
     calls_latency_task = asyncio.create_task(anon.ping())
 
@@ -60,7 +62,7 @@ async def _ping(_, m: types.Message):
     uptime = get_time(int(time.time() - boot))
     latency = round((time.perf_counter() - start) * 1000, 2)
     network_speed, db_latency, calls_latency = await asyncio.gather(
-        network_speed_task,
+        network_speed_task or asyncio.sleep(0, result=None),
         db_latency_task,
         calls_latency_task,
     )
@@ -72,10 +74,9 @@ async def _ping(_, m: types.Message):
         psutil.disk_usage("/").percent,
         calls_latency,
     )
-    caption += (
-        f"\n<b>Speedtest:</b> <code>{network_speed}</code>"
-        f"\n<b>DB Latency:</b> <code>{db_latency}</code>"
-    )
+    caption += f"\n<b>DB Latency:</b> <code>{db_latency}</code>"
+    if network_speed:
+        caption += f"\n<b>Speedtest:</b> <code>{network_speed}</code>"
     await sent.edit_media(
         media=types.InputMediaPhoto(
             media=config.PING_IMG,

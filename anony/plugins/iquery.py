@@ -51,7 +51,19 @@ async def inline_query_handler(_, query: types.InlineQuery):
                 )
             )
 
-        if answers:
-            await app.answer_inline_query(query.id, results=answers, cache_time=5)
+        if not answers:
+            # Answer with a visible placeholder instead of leaving the
+            # inline query spinner hanging forever.
+            answers = [
+                types.InlineQueryResultArticle(
+                    id="no_results",
+                    title="No results found",
+                    description="Try a different search query",
+                    input_message_content=types.InputTextMessageContent(
+                        "No results found — try a different search query."
+                    ),
+                )
+            ]
+        await app.answer_inline_query(query.id, results=answers, cache_time=5)
     except Exception as ex:
         logger.warning("Inline query failed for %r: %r", text, ex)

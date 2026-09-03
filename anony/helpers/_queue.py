@@ -64,6 +64,10 @@ class Queue:
         """Return the full queue including the currently playing item."""
         return list(self.queues[chat_id])
 
+    def set_queue(self, chat_id: int, items: list[MediaItem]) -> None:
+        """Replace the queue contents (shuffle / clear upcoming)."""
+        self.queues[chat_id] = deque(items)
+
     def remove_current(self, chat_id: int) -> None:
         """Remove the currently playing item only (if exists)."""
         if self.queues[chat_id]:
