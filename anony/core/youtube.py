@@ -231,6 +231,27 @@ class YouTube:
     def invalid(self, url: str) -> bool:
         return bool(re.match(self.iregex, url))
 
+    def _pot_extractor_args(self) -> dict:
+        """yt-dlp extractor_args with the PO token provider wired in.
+
+        The bgutil plugin (bgutil-ytdlp-pot-provider, installed as a yt-dlp
+        plugin via pyproject) fetches proof-of-origin tokens from an HTTP
+        server. With a valid POT, YouTube treats requests like a real
+        browser — this is the main defense against "confirm you're not a
+        bot" walls on datacenter IPs (Heroku/Render/VPS).
+
+        POT_BASE_URL points at the provider server; empty disables it and
+        the plugin stays dormant (yt-dlp just skips unavailable providers).
+        """
+        args = {
+            "youtube": {
+                "player_client": ["visionos", "tv_downgraded"],
+            }
+        }
+        if config.POT_BASE_URL:
+            args["youtubepot-bgutilhttp"] = {"base_url": config.POT_BASE_URL}
+        return args
+
     async def stream_url(self, video_id: str, video: bool = False) -> str | None:
         """Resolve a live stream to its HLS URL(s) without downloading.
 
@@ -249,11 +270,7 @@ class YouTube:
             "cookiefile": cookie,
             "socket_timeout": 15,
             "retries": 5,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "tv_downgraded"],
-                }
-            },
+            "extractor_args": self._pot_extractor_args(),
             # Live HLS only: pick the best audio variant, or the <=720p video
             # variant + best audio for video mode. The master playlist is NOT
             # used — ffmpeg fetches all 7 variant playlists in parallel and
@@ -414,11 +431,7 @@ class YouTube:
             # client (full format table, no PO token, no JS player needed).
             # tv_downgraded is the cookie-aware fallback for age/region
             # restricted videos.
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "tv_downgraded"],
-                }
-            },
+            "extractor_args": self._pot_extractor_args(),
         }
 
         if video:

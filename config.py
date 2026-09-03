@@ -45,6 +45,12 @@ class Config:
         self.API_URL = getenv("API_URL", "").rstrip("/")
         self.API_KEY = getenv("API_KEY", "")
 
+        # PO token provider (bgutil-ytdlp-pot-provider plugin). If set, yt-dlp
+        # fetches proof-of-origin tokens from this HTTP server, which makes
+        # requests look like a real browser and largely avoids YouTube's
+        # "confirm you're not a bot" walls on datacenter IPs.
+        self.POT_BASE_URL = getenv("POT_BASE_URL", "").rstrip("/")
+
     def check(self):
         missing = [
             var

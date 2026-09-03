@@ -5,6 +5,14 @@
 #   3. docker compose logs -f       # view logs
 #   4. docker compose down          # stop
 services:
+  # PO token provider — makes yt-dlp requests look like a real browser and
+  # avoids YouTube "confirm you're not a bot" walls on datacenter IPs.
+  # Optional: set POT_BASE_URL=http://pot-provider:4416 in .env to enable.
+  pot-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: pot-provider
+    restart: unless-stopped
+
   anonxmusic:
     build:
       context: .
@@ -14,6 +22,8 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    depends_on:
+      - pot-provider
     # Persist downloaded cookies across restarts (optional).
     volumes:
       - ./anony/cookies:/app/anony/cookies
