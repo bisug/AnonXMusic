@@ -143,6 +143,82 @@ class YouTube:
         ext = "mp4" if video else "mp3"
         return Path("downloads") / f"{video_id}.{ext}"
 
+    async def _download_onegrab(self, video_id: str, video: bool = False) -> str | None:
+        """Second API fallback: OneGrab /api/track.
+
+        GET {ONEGRAB_URL}/api/track?url=<watch url> with X-API-Key header
+        returns {cdnurl, id, key, platform, url}; cdnurl is a direct file URL.
+        """
+        if not config.ONEGRAB_KEY:
+            return None
+
+        filename = self._api_filename(video_id, video)
+        if self._usable_file(filename):
+            return str(filename)
+
+        headers = {"X-API-Key": config.ONEGRAB_KEY}
+        params = {
+            "url": f"{self.base}{video_id}",
+            "video": "true" if video else "false",
+        }
+        timeout = aiohttp.ClientTimeout(total=60)
+        try:
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    f"{config.ONEGRAB_URL}/api/track",
+                    params=params,
+                    headers=headers,
+                ) as resp:
+                    if resp.status != 200:
+                        logger.warning(
+                            "OneGrab fallback failed for %s: HTTP %s",
+                            video_id,
+                            resp.status,
+                        )
+                        return None
+                    data = await resp.json()
+
+            cdnurl = data.get("cdnurl")
+            if not cdnurl:
+                logger.warning("OneGrab fallback: no cdnurl for %s", video_id)
+                return None
+
+            # Fetch the actual file from the CDN URL.
+            dl_timeout = aiohttp.ClientTimeout(total=600 if video else 300)
+            async with aiohttp.ClientSession(timeout=dl_timeout) as session:
+                async with session.get(cdnurl) as resp:
+                    if resp.status != 200:
+                        logger.warning(
+                            "OneGrab CDN fetch failed for %s: HTTP %s",
+                            video_id,
+                            resp.status,
+                        )
+                        return None
+                    Path("downloads").mkdir(parents=True, exist_ok=True)
+                    tmpfile = filename.with_suffix(filename.suffix + ".part")
+                    with open(tmpfile, "wb") as fw:
+                        async for chunk in resp.content.iter_chunked(131072):
+                            if chunk:
+                                fw.write(chunk)
+
+            if not self._usable_file(tmpfile):
+                return None
+
+            tmpfile.replace(filename)
+            return str(filename)
+        except Exception as ex:
+            logger.warning("OneGrab fallback error for %s: %s", video_id, ex)
+            return None
+        finally:
+            tmpfile = self._api_filename(video_id, video).with_suffix(
+                self._api_filename(video_id, video).suffix + ".part"
+            )
+            if tmpfile.exists():
+                try:
+                    tmpfile.unlink()
+                except Exception:
+                    pass
+
     async def _download_api(self, video_id: str, video: bool = False) -> str | None:
         if not self._api_enabled():
             if not self.api_warned:
@@ -397,6 +473,10 @@ class YouTube:
             downloaded = await self._download_api(video_id, video=video)
             if downloaded:
                 return downloaded
+
+        downloaded = await self._download_onegrab(video_id, video=video)
+        if downloaded:
+            return downloaded
 
         cookie = self.get_cookies()
 

@@ -45,6 +45,12 @@ class Config:
         self.API_URL = getenv("API_URL", "").rstrip("/")
         self.API_KEY = getenv("API_KEY", "")
 
+        # Second download-API fallback (OneGrab: https://api.onegrab.fun).
+        # Different protocol than API_URL: GET /api/track?url=<watch-url> with
+        # X-API-Key header returns {cdnurl, ...} — a direct file URL to fetch.
+        self.ONEGRAB_URL = getenv("ONEGRAB_URL", "https://api.onegrab.fun").rstrip("/")
+        self.ONEGRAB_KEY = getenv("ONEGRAB_KEY", "")
+
         # PO token provider (bgutil-ytdlp-pot-provider plugin). If set, yt-dlp
         # fetches proof-of-origin tokens from this HTTP server, which makes
         # requests look like a real browser and largely avoids YouTube's
