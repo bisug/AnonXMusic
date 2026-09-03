@@ -51,9 +51,11 @@ class Config:
         self.ONEGRAB_URL = getenv("ONEGRAB_URL", "https://api.onegrab.fun").rstrip("/")
         self.ONEGRAB_KEY = getenv("ONEGRAB_KEY", "")
 
-        # Third fallback: NexGen video API (https://api.video.nexgenbots.xyz).
-        # GET /video/{id}?api=KEY -> {status, link}; link streams the file.
-        self.NEXGEN_URL = getenv("NEXGEN_URL", "https://api.video.nexgenbots.xyz").rstrip("/")
+        # Third fallback: NexGen APIs (audio + video hosts).
+        # Audio: GET {NEXGEN_AUDIO_URL}/stream/{id}?api=KEY -> direct audio/webm stream
+        # Video: GET {NEXGEN_VIDEO_URL}/video/{id}?api=KEY -> {status, link} -> link streams file
+        self.NEXGEN_AUDIO_URL = getenv("NEXGEN_AUDIO_URL", "https://pvtz.nexgenbots.xyz").rstrip("/")
+        self.NEXGEN_VIDEO_URL = getenv("NEXGEN_VIDEO_URL", "https://api.video.nexgenbots.xyz").rstrip("/")
         self.NEXGEN_KEY = getenv("NEXGEN_KEY", "")
 
         # PO token provider (bgutil-ytdlp-pot-provider plugin). If set, yt-dlp

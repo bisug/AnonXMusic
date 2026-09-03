@@ -15,6 +15,7 @@ from pathlib import Path
 from py_yt import Playlist, VideosSearch
 
 from anony import config, logger
+from anony.core import providers
 from anony.helpers import Track, utils
 
 
@@ -143,204 +144,22 @@ class YouTube:
         ext = "mp4" if video else "mp3"
         return Path("downloads") / f"{video_id}.{ext}"
 
-    async def _download_onegrab(self, video_id: str, video: bool = False) -> str | None:
-        """Second API fallback: OneGrab /api/track.
-
-        GET {ONEGRAB_URL}/api/track?url=<watch url> with X-API-Key header
-        returns {cdnurl, id, key, platform, url}; cdnurl is a direct file URL.
-        """
-        if not config.ONEGRAB_KEY:
-            return None
-
-        filename = self._api_filename(video_id, video)
-        if self._usable_file(filename):
-            return str(filename)
-
-        headers = {"X-API-Key": config.ONEGRAB_KEY}
-        params = {
-            "url": f"{self.base}{video_id}",
-            "video": "true" if video else "false",
-        }
-        timeout = aiohttp.ClientTimeout(total=60)
-        try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    f"{config.ONEGRAB_URL}/api/track",
-                    params=params,
-                    headers=headers,
-                ) as resp:
-                    if resp.status != 200:
-                        logger.warning(
-                            "OneGrab fallback failed for %s: HTTP %s",
-                            video_id,
-                            resp.status,
-                        )
-                        return None
-                    data = await resp.json()
-
-            cdnurl = data.get("cdnurl")
-            if not cdnurl:
-                logger.warning("OneGrab fallback: no cdnurl for %s", video_id)
-                return None
-
-            # Fetch the actual file from the CDN URL.
-            dl_timeout = aiohttp.ClientTimeout(total=600 if video else 300)
-            async with aiohttp.ClientSession(timeout=dl_timeout) as session:
-                async with session.get(cdnurl) as resp:
-                    if resp.status != 200:
-                        logger.warning(
-                            "OneGrab CDN fetch failed for %s: HTTP %s",
-                            video_id,
-                            resp.status,
-                        )
-                        return None
-                    Path("downloads").mkdir(parents=True, exist_ok=True)
-                    tmpfile = filename.with_suffix(filename.suffix + ".part")
-                    with open(tmpfile, "wb") as fw:
-                        async for chunk in resp.content.iter_chunked(131072):
-                            if chunk:
-                                fw.write(chunk)
-
-            if not self._usable_file(tmpfile):
-                return None
-
-            tmpfile.replace(filename)
-            return str(filename)
-        except Exception as ex:
-            logger.warning("OneGrab fallback error for %s: %s", video_id, ex)
-            return None
-        finally:
-            tmpfile = self._api_filename(video_id, video).with_suffix(
-                self._api_filename(video_id, video).suffix + ".part"
-            )
-            if tmpfile.exists():
-                try:
-                    tmpfile.unlink()
-                except Exception:
-                    pass
-
-    async def _download_nexgen(self, video_id: str, video: bool = False) -> str | None:
-        """Third API fallback: NexGen video API.
-
-        GET {NEXGEN_URL}/video/{id}?api=KEY returns {status, link};
-        link is a direct stream URL (WebM) to download.
-        """
-        if not config.NEXGEN_KEY:
-            return None
-
-        filename = self._api_filename(video_id, video)
-        if self._usable_file(filename):
-            return str(filename)
-
-        tmpfile = filename.with_suffix(filename.suffix + ".part")
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    f"{config.NEXGEN_URL}/video/{video_id}",
-                    params={"api": config.NEXGEN_KEY},
-                ) as resp:
-                    if resp.status != 200:
-                        logger.warning(
-                            "NexGen fallback failed for %s: HTTP %s",
-                            video_id,
-                            resp.status,
-                        )
-                        return None
-                    data = await resp.json()
-
-            link = data.get("link")
-            if not link or data.get("status") != "done":
-                logger.warning("NexGen fallback: bad response for %s: %s", video_id, data)
-                return None
-
-            dl_timeout = aiohttp.ClientTimeout(total=600 if video else 300)
-            async with aiohttp.ClientSession(timeout=dl_timeout) as session:
-                async with session.get(link) as resp:
-                    if resp.status != 200:
-                        logger.warning(
-                            "NexGen stream fetch failed for %s: HTTP %s",
-                            video_id,
-                            resp.status,
-                        )
-                        return None
-                    Path("downloads").mkdir(parents=True, exist_ok=True)
-                    with open(tmpfile, "wb") as fw:
-                        async for chunk in resp.content.iter_chunked(131072):
-                            if chunk:
-                                fw.write(chunk)
-
-            if not self._usable_file(tmpfile):
-                return None
-
-            tmpfile.replace(filename)
-            return str(filename)
-        except Exception as ex:
-            logger.warning("NexGen fallback error for %s: %s", video_id, ex)
-            return None
-        finally:
-            if tmpfile.exists():
-                try:
-                    tmpfile.unlink()
-                except Exception:
-                    pass
-
     async def _download_api(self, video_id: str, video: bool = False) -> str | None:
-        if not self._api_enabled():
-            if not self.api_warned:
-                self.api_warned = True
-                logger.warning("API fallback is disabled; set API_URL and API_KEY.")
-            return None
+        """Try every configured download-API provider, in order.
 
-        filename = self._api_filename(video_id, video)
-        if self._usable_file(filename):
-            return str(filename)
-
-        Path("downloads").mkdir(parents=True, exist_ok=True)
-        tmpfile = filename.with_suffix(filename.suffix + ".part")
-        timeout = aiohttp.ClientTimeout(total=600 if video else 300)
-        params = {
-            "url": video_id,
-            "type": "video" if video else "audio",
-            "api_key": config.API_KEY,
-        }
-
-        try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(f"{config.API_URL}/download", params=params) as resp:
-                    if resp.status != 200:
-                        logger.warning(
-                            "API fallback failed for %s: HTTP %s",
-                            video_id,
-                            resp.status,
-                        )
-                        return None
-
-                    content_type = resp.headers.get("Content-Type", "").lower()
-                    if "application/json" in content_type or content_type.startswith("text/"):
-                        message = (await resp.text())[:200]
-                        logger.warning("API fallback failed for %s: %s", video_id, message)
-                        return None
-
-                    with open(tmpfile, "wb") as fw:
-                        async for chunk in resp.content.iter_chunked(131072):
-                            if chunk:
-                                fw.write(chunk)
-
-            if not self._usable_file(tmpfile):
-                return None
-
-            tmpfile.replace(filename)
-            return str(filename)
-        except Exception as ex:
-            logger.warning("API fallback error for %s: %s", video_id, ex)
-            return None
-        finally:
-            if tmpfile.exists() and not self._usable_file(filename):
-                try:
-                    tmpfile.unlink()
-                except Exception:
-                    pass
+        Providers live in anony/core/providers.py; each returns a local file
+        path or None, so a failing provider just falls through to the next.
+        """
+        for name, provider in (
+            ("ShrutiBots", providers.shrutibots),
+            ("OneGrab", providers.onegrab),
+            ("NexGen", providers.nexgen),
+        ):
+            downloaded = await provider(video_id, video=video)
+            if downloaded:
+                return downloaded
+            logger.debug("Provider %s missed for %s", name, video_id)
+        return None
 
     def get_cookies(self):
         if not self.checked:
@@ -539,14 +358,6 @@ class YouTube:
             downloaded = await self._download_api(video_id, video=video)
             if downloaded:
                 return downloaded
-
-        downloaded = await self._download_onegrab(video_id, video=video)
-        if downloaded:
-            return downloaded
-
-        downloaded = await self._download_nexgen(video_id, video=video)
-        if downloaded:
-            return downloaded
 
         cookie = self.get_cookies()
 
