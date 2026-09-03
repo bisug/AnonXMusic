@@ -1,7 +1,9 @@
 build:
   docker:
     worker: Dockerfile
-# Explicit run command: overrides the Procfile, which would otherwise run
-# `bash start` -> `uv run ...` — uv isn't in the runtime image.
+# Explicit run command matching the Dockerfile CMD. NOTE: this only takes
+# effect when the app is on the `container` stack — on a buildpack stack
+# (heroku-22/24/26) heroku.yml is ignored entirely and the Procfile runs
+# instead, in which case python3 must come from the buildpack, not the venv.
 run:
   worker: /app/.venv/bin/python -m anony

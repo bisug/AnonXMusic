@@ -102,4 +102,4 @@ read -rp "STRING SESSION: " string_session
 
 save_env_vars "$api_id" "$api_hash" "$bot_token" "$mongo_db" "$logger" "$string_session" "$ownid"
 
-pprint "\nSetup complete! Start the bot using:\n\n  bash start\n\n" "cgreen"
+pprint "\nSetup complete! Start the bot using:\n\n  uv run python3 -m anony\n\n" "cgreen"

@@ -1,1 +1,1 @@
-worker: /app/.venv/bin/python -m anony
+worker: python3 -m anony

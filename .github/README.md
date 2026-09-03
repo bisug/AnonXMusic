@@ -67,7 +67,7 @@ mv sample.env .env
 # Edit .env with your credentials
 
 # Start the bot
-bash start
+uv run python3 -m anony
 ```
 
 <h4>🪟 Windows (PowerShell)</h4>
@@ -88,7 +88,7 @@ mv sample.env .env
 # Start the bot
 uv run python3 -m anony
 
-> ⭐ or use Git Bash or WSL to run `bash start`.
+> ⭐ Same command works everywhere — Linux, macOS, Windows, Git Bash, WSL.
 ```
 
 <h4>🐳 VPS with Docker Compose</h4>
