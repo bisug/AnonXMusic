@@ -11,6 +11,11 @@
         }
     },
     "env": {
+        "POT_BASE_URL": {
+            "description": "Optional URL of a bgutil-ytdlp-pot-provider server (e.g. on Koyeb). When set, yt-dlp fetches PO tokens from it to avoid YouTube bot checks on datacenter IPs.",
+            "value": "",
+            "required": false
+        },
         "API_ID": {
             "description": "Get this value from https://my.telegram.org",
             "value": "",

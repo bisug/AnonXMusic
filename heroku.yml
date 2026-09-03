@@ -1,3 +1,7 @@
 build:
   docker:
     worker: Dockerfile
+# Explicit run command: overrides the Procfile, which would otherwise run
+# `bash start` -> `uv run ...` — uv isn't in the runtime image.
+run:
+  worker: /app/.venv/bin/python -m anony
