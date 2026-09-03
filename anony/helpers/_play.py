@@ -128,7 +128,10 @@ def checkUB(play):
             except errors.ChatAdminRequired:
                 return await m.reply_text(m.lang["admin_required"])
             # Kurigram exposes this at the top level; avoid the old internal namespace.
-            except errors.UserNotParticipant:
+            # PeerIdInvalid: the bot's session has never met the assistant user
+            # (session strings carry no peer cache), so resolve_peer fails before
+            # Telegram can answer — treat it as "not a participant" and invite.
+            except (errors.UserNotParticipant, errors.PeerIdInvalid):
                 if m.chat.username:
                     invite_link = m.chat.username
                     try:
