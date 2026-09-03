@@ -114,10 +114,28 @@ class TgCall(PyTgCalls):
         # For network streams (m3u8/HLS, where file_path is a URL) add
         # reconnect flags so a transient blip doesn't end playback; for
         # local files they'd be ignored, so only apply to URL inputs.
+        #
+        # pytgcalls' cleanup_commands() runs `ffmpeg -h full` and strips
+        # any flag the installed binary doesn't advertise, so the newer
+        # flags below are a free upgrade: ffmpeg >= 7.1 (reconnect_max_
+        # retries / reconnect_delay_total_max / respect_retry_after) and
+        # >= 6.1 (reconnect_on_network_error / reconnect_on_http_error)
+        # use them; older builds silently drop them and keep the base
+        # reconnect set. No version probing needed.
         ffmpeg_args = []
         if str(media_path).startswith(("http://", "https://")):
             ffmpeg_args.append(
-                "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                # Base set (ffmpeg >= 5.0): reconnect on disconnect,
+                # cover non-seekable streams, cap per-attempt backoff.
+                "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 "
+                # Retry on TCP/TLS failures during connect, not just EOF
+                # (>= 6.1), and on transient 5xx from googlevideo (>= 6.1).
+                "-reconnect_on_network_error 1 "
+                "-reconnect_on_http_error 429,500,502,503,504 "
+                # Bound the retry storm (>= 7.1): at most 8 attempts and
+                # 30s total backoff, so a dead stream fails fast instead
+                # of hanging the call for minutes.
+                "-reconnect_max_retries 8 -reconnect_delay_total_max 30"
             )
         if seek_time > 1:
             ffmpeg_args.append(f"-ss {seek_time}")

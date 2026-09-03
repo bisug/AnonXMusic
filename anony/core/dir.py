@@ -11,7 +11,10 @@ from pathlib import Path
 from anony import logger
 
 # Minimum ffmpeg we rely on (concurrent-fragment merge, current flag set).
-_FFMPEG_MIN = (4, 4)
+# 5.0 is the floor for the base -reconnect* input flags in calls.py; the
+# newer retry-bounding flags (>= 7.1) are optional and auto-stripped by
+# pytgcalls on older builds.
+_FFMPEG_MIN = (5, 0)
 
 
 def _assert_ffmpeg_version() -> None:
