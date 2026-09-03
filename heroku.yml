@@ -6,4 +6,4 @@ build:
 # (heroku-22/24/26) heroku.yml is ignored entirely and the Procfile runs
 # instead, in which case python3 must come from the buildpack, not the venv.
 run:
-  worker: /app/.venv/bin/python -m anony
+  worker: python3 -m anony
