@@ -10,8 +10,20 @@ COPY pyproject.toml uv.lock ./
 # --compile-bytecode: import-time speedup, done once at build not first-run.
 # --mount=cache: uv's download cache persists across builds without
 # bloating the image layer.
+# --python /usr/local/bin/python3.14: pin to the system interpreter. Without
+# this, uv reads .python-version (3.13), finds no 3.13 in the image, and
+# downloads a managed CPython into /root/.local — the venv symlinks there,
+# and the runtime stage (which only copies /app/.venv) gets a broken python.
+# UV_PYTHON_DOWNLOADS=never: belt & suspenders — never fetch a managed
+# interpreter, always use the image's system python.
+# Sanity check: the venv python must resolve INSIDE this stage, and the
+# symlink target must exist in the runtime stage too (same base image).
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --compile-bytecode
+    UV_PYTHON_DOWNLOADS=never \
+    uv sync --frozen --no-install-project --compile-bytecode \
+        --python /usr/local/bin/python3.14 \
+    && .venv/bin/python -c 'import sys; assert sys.executable.startswith("/usr/local/bin/python3.14"), sys.executable; print("venv python:", sys.executable)' \
+    && .venv/bin/python -c 'import pytgcalls, yt_dlp; print("deps import OK")'
 
 # ---- Stage 2: runtime — only what the bot needs to run ----
 FROM python:3.14-slim AS runtime
