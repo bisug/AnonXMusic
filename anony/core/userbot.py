@@ -52,8 +52,13 @@ class Userbot(Client):
             self.clients.append(client)
         try:
             await client.send_message(config.LOGGER_ID, "Assistant Started")
-        except Exception:
-            raise SystemExit(f"Assistant {num} failed to send message in log group.")
+        except Exception as ex:
+            raise SystemExit(
+                f"Assistant {num} failed to send message in log group "
+                f"({config.LOGGER_ID}): {ex}\n"
+                f"Fix: add the assistant account to the log group "
+                f"and ensure it can post there."
+            )
 
         client.id = ub.me.id
         client.name = ub.me.first_name
