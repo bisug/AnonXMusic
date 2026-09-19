@@ -4,7 +4,7 @@
   <img src="https://raw.githubusercontent.com/bisug/Melody/master/.github/melody.jpg" width="480" alt="Melody logo">
 
   <p>
-    <a href="https://github.com/bisug/Melody/stargazers"><img src="https://img.shields.io/github/stars/bisug/Melody?style=flat-square&logo=github" alt="Stars"></a>
+    <a href="https://github.com/bisug/Melody"><img src="https://img.shields.io/github/stars/bisug/Melody?style=flat-square&logo=github" alt="Stars"></a>
     <a href="https://github.com/bisug/Melody/network/members"><img src="https://img.shields.io/github/forks/bisug/Melody?style=flat-square&logo=github" alt="Forks"></a>
     <a href="https://github.com/bisug/Melody/blob/master/LICENSE"><img src="https://img.shields.io/github/license/bisug/Melody?style=flat-square" alt="License"></a>
     <a href="https://github.com/bisug/Melody/actions/workflows/ci.yml"><img src="https://github.com/bisug/Melody/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
