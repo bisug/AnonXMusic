@@ -13,11 +13,7 @@ from melody.helpers._play import checkUB
 
 
 def playlist_to_queue(chat_id: int, tracks: list) -> tuple[str, int, int]:
-    """Queue playlist tracks, honoring the queue and duration limits.
-
-    Returns the expandable list body plus the number of tracks actually
-    added and the number skipped (queue full or over the duration limit).
-    """
+    """Queue tracks within limits; return (list body, added, skipped)."""
     text = "<blockquote expandable>"
     added = 0
     skipped = 0
@@ -36,7 +32,7 @@ def playlist_to_queue(chat_id: int, tracks: list) -> tuple[str, int, int]:
 
 
 async def announce_playlist(m: types.Message, tracks: list) -> None:
-    """Add playlist tracks to the queue and report the result to the chat."""
+    """Queue tracks and report the result."""
     body, added, skipped = playlist_to_queue(m.chat.id, tracks)
     text = m.lang["playlist_queued"].format(added) + body
     if skipped:
@@ -67,8 +63,7 @@ async def play_hndlr(
     mention = m.from_user.mention
     media = tg.get_media(m.reply_to_message) if m.reply_to_message else None
     tracks = []
-    # Background download task started as early as possible so network
-    # time overlaps with queue / logger / UB-join checks below.
+    # Early background download overlaps network time with queue checks.
     _dl_task: asyncio.Task | None = None
 
     if media:
@@ -88,9 +83,8 @@ async def play_hndlr(
             if not tracks:
                 return await sent.edit_text(m.lang["playlist_error"])
 
-            # Pick the first within-limit track to play immediately. We don't
-            # want an over-long first video to abort the whole playlist — and
-            # with shuffle on the "first" track would otherwise be random.
+            # Play the first within-limit track; don't let an over-long first
+            # video abort the playlist.
             idx = next(
                 (i for i, t in enumerate(tracks) if t.duration_sec <= config.DURATION_LIMIT),
                 None,
@@ -121,16 +115,13 @@ async def play_hndlr(
     if not file:
         return await sent.edit_text(m.lang["play_usage"])
 
-    # Live streams have no duration — the limit doesn't apply.
+    # Duration limit doesn't apply to live (no duration).
     if file.duration_sec > config.DURATION_LIMIT and not getattr(file, "is_live", False):
         return await sent.edit_text(
             m.lang["play_duration_limit"].format(config.DURATION_LIMIT // 60)
         )
 
-    # Kick off the download immediately in the background — before queue /
-    # logger checks — so those local operations run while the file is
-    # already being fetched over the network. Live streams skip this:
-    # they are never downloaded, only resolved to a stream URL.
+    # Download in background while local checks run; live resolves to a URL.
     if (
         not file.is_live
         and not file.file_path
@@ -170,14 +161,12 @@ async def play_hndlr(
 
     if not file.file_path:
         if file.is_live:
-            # Resolve the live stream to its HLS URL(s) — no download.
             await sent.edit_text(m.lang["play_downloading"])
             file.file_path = await yt.stream_url(file.id, video=video)
         else:
             file.file_path = yt.cached_download(file.id, video=video)
             if not file.file_path:
                 if _dl_task:
-                    # Download already running — just wait for it.
                     await sent.edit_text(m.lang["play_downloading"])
                     file.file_path = await _dl_task
                     _dl_task = None

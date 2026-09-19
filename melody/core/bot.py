@@ -13,9 +13,7 @@ from melody import config, logger
 
 DEFAULT_SUPPORT_LINK = "https://t.me/SuMelodyVibes"
 TELEGRAM_LINK_PREFIXES = ("https://t.me/", "http://t.me/", "t.me/", "telegram.me/")
-# Re-resolve numeric-ID support links at most once an hour; URL values never
-# need resolution at all.
-_SUPPORT_TTL = 3600
+_SUPPORT_TTL = 3600  # re-resolve numeric-ID support links at most hourly
 
 
 class Bot(pyrogram.Client):
@@ -85,20 +83,14 @@ class Bot(pyrogram.Client):
         self._support_resolved_at = time.monotonic()
 
     async def refresh_support_links(self) -> None:
-        # Numeric-ID links cost 1-2 Telegram API calls per resolve; skip when
-        # resolved recently (URL values resolve locally and are cheap anyway).
+        # Numeric-ID resolution costs Telegram API calls; skip if recent.
         resolved_at = getattr(self, "_support_resolved_at", 0)
         if time.monotonic() - resolved_at < _SUPPORT_TTL:
             return
         await self.resolve_support_links()
 
     async def boot(self):
-        """
-        Starts the bot and performs initial setup.
-
-        Raises:
-            SystemExit: If the bot fails to access the log group or is not an administrator in the logger group.
-        """
+        """Start the bot; SystemExit if the log group is unreachable."""
         await super().start()
         self.id = self.me.id
         self.name = self.me.first_name
@@ -118,9 +110,7 @@ class Bot(pyrogram.Client):
         logger.info(f"Bot started as @{self.username}")
 
     async def exit(self):
-        """
-        Sends a shutdown notification to the logger group, then stops the bot.
-        """
+        """Notify the log group, then stop."""
         if self.is_connected:
             with suppress(Exception):
                 await self.send_message(self.logger, "Bot Stopped")

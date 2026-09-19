@@ -52,7 +52,7 @@ async def _listsudo(_, m: types.Message):
             user = (await app.get_users(user_id)).mention
             txt += f"\n- {user}"
         except Exception as ex:
-            logger.debug("Skipping sudoer %s in listsudo: %r", user_id, ex)
+            logger.debug("Skipping unreachable sudoer %s: %r", user_id, ex)
             continue
 
     await sent.edit_text(txt)

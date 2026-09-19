@@ -20,12 +20,7 @@ from melody.helpers import Track, utils
 
 
 class _YDLLogger:
-    """Route yt-dlp output to the app logger.
-
-    Debug/info are dropped (too noisy), but warnings — e.g. 'incompatible
-    for merge -> mkv' or 'requested format not available' — reach the log so
-    format/merge problems are never silent.
-    """
+    """Forward yt-dlp warnings/errors to the app logger."""
 
     def debug(self, msg):
         pass
@@ -58,11 +53,9 @@ class YouTube:
             r"|playlist\?list=[A-Za-z0-9_-]+|[A-Za-z0-9_-]{11}))\S*"
         )
         self.api_warned = False
-        # In-flight downloads keyed by video id, so concurrent requests for
-        # the same id share one download instead of colliding on the file.
+        # Same-id requests share one download task.
         self._inflight: dict[str, asyncio.Task] = {}
-        # Live waiter count per in-flight id. When it drops to zero (every
-        # caller cancelled), the yt-dlp progress hook aborts the worker thread.
+        # Waiter count per id; zero aborts the download via progress hook.
         self._waiters: dict[str, int] = {}
 
     def _usable_file(self, filename: str | Path) -> bool:
@@ -73,10 +66,7 @@ class YouTube:
         return bool(config.API_URL and config.API_KEY)
 
     def _cached_download(self, video_id: str, video: bool) -> str | None:
-        # Scan every extension for the id rather than a hardcoded whitelist.
-        # yt-dlp may write .mp4/.webm/.m4a/.mkv/... depending on the chosen
-        # format and merge; guessing extensions hid real files and caused a
-        # re-download loop. Return the most recently written usable match.
+        # Scan all extensions; yt-dlp may write mp4/webm/m4a/mkv.
         candidates = sorted(
             Path("downloads").glob(f"{video_id}.*"),
             key=lambda p: p.stat().st_mtime,
@@ -93,15 +83,9 @@ class YouTube:
     def _evict_downloads(
         self, max_bytes: int = 4 * 1024**3, min_age: float = 3600
     ) -> None:
-        """Cap the downloads/ and cache/ dirs by total size, oldest-first.
+        """Cap downloads/ and cache/ dirs by size, oldest-first.
 
-        cache/ holds generated thumbnails (~200KB each) that were previously
-        never evicted — unbounded disk growth over months of uptime.
-
-        ponytail: LRU by mtime with a 1h floor — files touched within the
-        last hour are skipped so an in-progress or actively-streamed track is
-        never deleted (max track length is bounded by DURATION_LIMIT). If the
-        floor ever proves unsafe, upgrade to ref-counting against active calls.
+        shortcut: LRU by mtime with 1h floor, not ref-counting.
         """
         for dirname in ("downloads", "cache"):
             self._evict_dir(Path(dirname), max_bytes, min_age)
@@ -141,11 +125,7 @@ class YouTube:
                 logger.warning("Failed to evict %s: %s", p, ex)
 
     async def _download_api(self, video_id: str, video: bool = False) -> str | None:
-        """Try every configured download-API provider, in order.
-
-        Providers live in melody/core/providers.py; each returns a local file
-        path or None, so a failing provider just falls through to the next.
-        """
+        """Try each download-API provider in order; None if all miss."""
         for name, provider in (
             ("ShrutiBots", providers.shrutibots),
             ("OneGrab", providers.onegrab),
@@ -189,17 +169,7 @@ class YouTube:
         return bool(re.match(self.iregex, url))
 
     def _pot_extractor_args(self) -> dict:
-        """yt-dlp extractor_args with the PO token provider wired in.
-
-        The bgutil plugin (bgutil-ytdlp-pot-provider, installed as a yt-dlp
-        plugin via pyproject) fetches proof-of-origin tokens from an HTTP
-        server. With a valid POT, YouTube treats requests like a real
-        browser — this is the main defense against "confirm you're not a
-        bot" walls on datacenter IPs (Heroku/Render/VPS).
-
-        POT_BASE_URL points at the provider server; empty disables it and
-        the plugin stays dormant (yt-dlp just skips unavailable providers).
-        """
+        """yt-dlp extractor_args with PO token provider (POT_BASE_URL; empty disables)."""
         args = {
             "youtube": {
                 "player_client": ["visionos", "tv_downgraded"],
@@ -210,13 +180,7 @@ class YouTube:
         return args
 
     async def stream_url(self, video_id: str, video: bool = False) -> str | None:
-        """Resolve a live stream to its HLS URL(s) without downloading.
-
-        Live HLS can't be downloaded to a file (it never ends), so the URL is
-        handed straight to ffmpeg. YouTube live HLS is demuxed: video and
-        audio are separate variant playlists. Returns the audio variant URL,
-        or a "video|audio" pair for video mode (play_media splits them).
-        """
+        """Resolve live stream to HLS URL(s); video mode returns "video|audio"."""
         url = self.base + video_id
         cookie = self.get_cookies()
         opts = {
@@ -228,10 +192,8 @@ class YouTube:
             "socket_timeout": 15,
             "retries": 5,
             "extractor_args": self._pot_extractor_args(),
-            # Live HLS only: pick the best audio variant, or the <=720p video
-            # variant + best audio for video mode. The master playlist is NOT
-            # used — ffmpeg fetches all 7 variant playlists in parallel and
-            # googlevideo rate-limits the keepalive requests.
+            # Live HLS: best variant only; master playlist triggers parallel
+            # fetches that googlevideo rate-limits.
             "format": "bv*[height<=?720]+ba/b" if video else "ba/b",
         }
 
@@ -254,10 +216,7 @@ class YouTube:
 
     async def search(self, query: str, m_id: int, video: bool = False) -> Track | None:
         try:
-            # with_live=True so direct live-stream URLs resolve to the live
-            # video instead of a random related VOD (py_yt's scraper search
-            # can't see live results otherwise). Live entries come back with
-            # duration=None / viewCount=None.
+            # with_live so live URLs resolve to the live video, not a VOD.
             _search = VideosSearch(query, limit=1, with_live=True)
             results = await _search.next()
         except Exception as ex:
@@ -301,10 +260,7 @@ class YouTube:
             return tracks
 
         for data in plist.get("videos", []):
-            # Skip private/deleted/live entries individually so one bad
-            # video never aborts the whole playlist fetch. Live entries are
-            # skipped too: a live stream inside a playlist would hang the
-            # sequential queue download forever.
+            # Skip bad entries individually; a live entry would hang the queue.
             vid = data.get("id")
             title = data.get("title")
             duration = data.get("duration")
@@ -371,33 +327,21 @@ class YouTube:
             "retries": 5,
             "fragment_retries": 5,
             "file_access_retries": 3,
-            # Download up to 4 fragments concurrently — major speed boost
-            # for DASH/HLS streams that are split into many small chunks.
-            # Prefetch (next-track, runs *during* live playback) drops to 1 so
-            # it can't parallel-hammer CPU/IO/bandwidth and stutter the encoder.
+            # 4 concurrent fragments speed up chunked streams; prefetch uses 1
+            # to avoid stuttering live playback.
             "concurrent_fragment_downloads": 1 if prefetch else 4,
-            # Fail fast on stalled connections instead of hanging indefinitely.
             "socket_timeout": 15,
-            # Don't pre-test every selected format; trust the selector and
-            # only download what we picked. Avoids an extra RTT per stream
-            # (and a transient 403/429 dropping a working format to /best).
+            # Trust the format selector; avoids an extra RTT per stream.
             "check_formats": False,
-            # YouTube forces SABR on most clients, so formats come back
-            # without a URL and the download silently fails. yt-dlp 2026.6+
-            # removed android_sdkless; visionos is the new default no-token
-            # client (full format table, no PO token, no JS player needed).
-            # tv_downgraded is the cookie-aware fallback for age/region
-            # restricted videos.
+            # YouTube forces SABR on most clients; visionos returns full
+            # formats without a token, tv_downgraded covers age/region gates.
             "extractor_args": self._pot_extractor_args(),
         }
 
         if video:
             ydl_opts = {
                 **base_opts,
-                # Cap at 720p, prefer h264/aac in an mp4 container; yt-dlp
-                # picks the best 720p h264 stream and merges to mp4. The
-                # real written path is resolved via extract_info below, so
-                # we never guess the extension.
+                # 720p h264/aac merged to mp4.
                 "format": "bv*[height<=?720]+ba/b",
                 "format_sort": ["vcodec:h264", "acodec:aac", "ext:mp4"],
                 "merge_output_format": "mp4",
@@ -405,16 +349,12 @@ class YouTube:
         else:
             ydl_opts = {
                 **base_opts,
-                # Prefer native Opus/WebM (no transcoding), fall back to any
-                # best-audio format so the download never fails silently.
+                # Native Opus/WebM first (no transcoding), else best audio.
                 "format": "ba/b",
                 "format_sort": ["acodec:opus", "ext:webm"],
             }
 
-        # Cooperative cancel: a to_thread worker can't be cancelled from the
-        # loop, so this hook (fired between fragments) aborts the download the
-        # moment the last waiter goes away — no wasted bandwidth on skipped
-        # tracks. Reads a plain dict int; the GIL makes that safe cross-thread.
+        # Hook aborts the download when the last waiter cancels (skip/stop).
         def _progress_hook(_status):
             if self._waiters.get(video_id, 0) <= 0:
                 raise yt_dlp.utils.DownloadCancelled()
@@ -433,10 +373,7 @@ class YouTube:
                 except Exception as ex:
                     logger.warning("Unexpected download error for %s: %s", video_id, ex)
                     return None
-            # Ask yt-dlp exactly what it wrote instead of guessing the
-            # extension — audio may fall back to .mp4, video merges may emit
-            # .mkv, etc. Fall back to a directory scan only if the info dict
-            # doesn't carry the path (older/edge extractor results).
+            # Use yt-dlp's reported path; scan the dir only as fallback.
             requested = (info or {}).get("requested_downloads") or []
             path = None
             if requested:
@@ -449,10 +386,8 @@ class YouTube:
                 self._evict_downloads()
             return path
 
-        # De-duplicate concurrent downloads of the same id (background play
-        # task + next-track prefetch can both fire for one video). Whoever
-        # arrives first owns the download; the rest await the same task.
-        # A per-id waiter count drives the cancel hook above.
+        # Same-id requests share one task; shield keeps it alive for other
+        # waiters when one caller cancels.
         self._waiters[video_id] = self._waiters.get(video_id, 0) + 1
         try:
             task = self._inflight.get(video_id)
@@ -464,9 +399,7 @@ class YouTube:
                     if self._inflight.get(v) is t
                     else None
                 )
-            # shield: if this caller is cancelled (skip/queue change) the
-            # shared download keeps running for any other waiter instead of
-            # being torn down mid-flight.
+            # shield: a cancelled caller must not kill the shared download.
             return await asyncio.shield(task)
         finally:
             self._waiters[video_id] = self._waiters.get(video_id, 1) - 1

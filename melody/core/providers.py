@@ -2,17 +2,7 @@
 # Licensed under the MIT License.
 # This file is part of Melody
 
-"""HTTP download-API fallback providers.
-
-Each provider is a small async function: (video_id, video) -> local file path
-or None. Shared plumbing (tmp .part file, chunked stream-to-disk, JSON error
-sniffing) lives in _stream_to_file so providers only describe their protocol:
-
-  ShrutiBots  GET {API_URL}/download?url={id}&type=audio|video&api_key=  -> binary
-  OneGrab     GET {ONEGRAB_URL}/api/track?url={watch}  (X-API-Key)      -> {cdnurl}
-  NexGen      audio: GET {NEXGEN_AUDIO_URL}/stream/{id}?api=            -> binary
-              video: GET {NEXGEN_VIDEO_URL}/video/{id}?api=              -> {link}
-"""
+"""HTTP fallback providers: (video_id, video) -> local path or None."""
 
 from pathlib import Path
 

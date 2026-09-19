@@ -51,7 +51,7 @@ rel_hist = {}
 @admin_check
 async def _admincache(_, m: types.Message):
     now = time.time()
-    # Drop expired cooldowns so rel_hist stays bounded to active users.
+    # Prune expired cooldowns to bound memory.
     for uid in [uid for uid, until in rel_hist.items() if until <= now]:
         del rel_hist[uid]
 

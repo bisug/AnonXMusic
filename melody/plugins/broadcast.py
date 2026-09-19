@@ -53,9 +53,8 @@ async def _broadcast(_, message: types.Message):
                     await asyncio.sleep(0.2)
                     break
                 except errors.FloodWait as fw:
-                    # Wait out the rate limit, then retry the SAME chat so it
-                    # is not silently dropped. Cap retries so a persistently
-                    # rate-limited chat cannot hold the broadcast lock forever.
+                    # Retry the same chat after the limit; cap retries so one
+                    # chat can't hold the broadcast lock forever.
                     retries += 1
                     if retries > 5:
                         if not failed:

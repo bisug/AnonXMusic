@@ -34,8 +34,7 @@ class Utilities:
             return f"{bytes / 1024:.2f} KB"
 
     def to_seconds(self, time: str) -> int:
-        # Live entries carry no duration ("LIVE"/None) — treat as 0 so the
-        # caller's own live handling (skip limit, skip timer) kicks in.
+        # "LIVE"/None has no duration; return 0 for live handling.
         if not time or not time.strip(":").strip():
             return 0
         try:

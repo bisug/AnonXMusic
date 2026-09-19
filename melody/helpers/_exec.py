@@ -8,14 +8,10 @@ import ast
 import traceback
 
 async def meval(code: str, globs: dict, **kwargs):
-    """
-    Asynchronously evaluate a code string in a controlled environment.
-    """
+    """Evaluate code async in a controlled environment."""
 
-    # Copy globals to avoid mutation
     globs = globs.copy()
 
-    # Special globals (for relative imports)
     _global_arg = "_globs"
     while _global_arg in globs:
         _global_arg = "_" + _global_arg
@@ -69,7 +65,6 @@ async def meval(code: str, globs: dict, **kwargs):
     )
     ast.fix_missing_locations(func_def)
 
-    # Compile & execute
     locs = {}
     exec(compile(ast.Module([func_def], type_ignores=[]), "<meval>", "exec"), {}, locs)
 
@@ -83,7 +78,7 @@ async def meval(code: str, globs: dict, **kwargs):
 
 
 def format_exception(exc: BaseException, tb: list[traceback.FrameSummary] | None = None) -> str:
-    """Format exception traceback into a readable string."""
+    """Format an exception traceback readably (paths relative to cwd)."""
     if tb is None:
         tb = traceback.extract_tb(exc.__traceback__)
 

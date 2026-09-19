@@ -13,9 +13,7 @@ from melody import config, logger, userbot
 
 class MongoDB:
     def __init__(self):
-        """
-        Initialize the MongoDB connection.
-        """
+        """Open the MongoDB connection."""
         self.mongo = AsyncMongoClient(config.MONGO_URL, serverSelectionTimeoutMS=12500)
         self.db = self.mongo.Anon
 
@@ -46,11 +44,7 @@ class MongoDB:
         self.usersdb = self.db.users
 
     async def connect(self) -> None:
-        """Check if we can connect to the database.
-
-        Raises:
-            SystemExit: If the connection to the database fails.
-        """
+        """Ping the DB and load caches; SystemExit on failure."""
         try:
             start = time()
             await self.mongo.admin.command("ping")
@@ -60,7 +54,7 @@ class MongoDB:
             raise SystemExit(f"Database connection failed: {type(e).__name__}") from e
 
     async def close(self) -> None:
-        """Close the connection to the database."""
+        """Close the DB connection."""
         await self.mongo.close()
         logger.info("Database connection closed.")
 
@@ -84,8 +78,8 @@ class MongoDB:
 
         if chat_id not in self.admin_list or reload:
             admins = await reload_admins(chat_id)
-            # Preserve the existing cache on reload failure (admins is None) so
-            # a transient Telegram error doesn't strip every admin's rights.
+            # Keep the old cache on reload failure so a transient error
+            # doesn't strip every admin's rights.
             if admins is not None:
                 self.admin_list[chat_id] = admins
             elif chat_id not in self.admin_list:

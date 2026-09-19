@@ -10,12 +10,7 @@ from melody import config, logger
 
 class Userbot(Client):
     def __init__(self):
-        """
-        Initializes the userbot with multiple clients.
-
-        This method sets up clients for the userbot using predefined session strings.
-        Each client is assigned a unique name based on the key in the `clients` dictionary.
-        """
+        """Set up assistant clients from SESSION1/2/3."""
         self.clients = []
         clients = {"one": "SESSION1", "two": "SESSION2", "three": "SESSION3"}
         for key, string_key in clients.items():
@@ -33,14 +28,7 @@ class Userbot(Client):
             )
 
     async def boot_client(self, num: int, ub: Client):
-        """
-        Boot a client and perform initial setup.
-        Args:
-            num (int): The client number to boot (1, 2, or 3).
-            ub (Client): The userbot client instance.
-        Raises:
-            SystemExit: If the client fails to send a message in the log group.
-        """
+        """Start one assistant; SystemExit if it can't post to the log group."""
         clients = {
             1: self.one,
             2: self.two,
@@ -71,9 +59,7 @@ class Userbot(Client):
         logger.info(f"Assistant {num} started as @{client.username}")
 
     async def boot(self):
-        """
-        Asynchronously starts the assistants.
-        """
+        """Start all configured assistants."""
         if config.SESSION1:
             await self.boot_client(1, self.one)
         if config.SESSION2:
@@ -82,9 +68,7 @@ class Userbot(Client):
             await self.boot_client(3, self.three)
 
     async def join_support_channel(self):
-        """
-        Retry joining the support channel after the bot resolves support links.
-        """
+        """Rejoin the support channel once the bot resolves its link."""
         for client in self.clients:
             try:
                 await client.join_chat(config.SUPPORT_CHANNEL)
@@ -92,9 +76,7 @@ class Userbot(Client):
                 logger.debug("Assistant could not join support channel: %s", ex)
 
     async def exit(self):
-        """
-        Asynchronously stops the assistants.
-        """
+        """Stop all assistants."""
         configured = []
         if config.SESSION1:
             configured.append(self.one)

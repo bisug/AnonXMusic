@@ -20,11 +20,11 @@ class Queue:
         return len(self.queues[chat_id]) - 1
 
     def size(self, chat_id: int) -> int:
-        """O(1) queue length — get_queue() copies the whole deque."""
+        """O(1) length; get_queue() copies the deque."""
         return len(self.queues[chat_id])
 
     def check_item(self, chat_id: int, item_id: str) -> tuple[int, MediaItem | None]:
-        """Check if an item with the given ID exists in the queue."""
+        """Find an item by ID; (-1, None) if absent."""
         pos, track = next(
             (
                 (i, track)
@@ -47,11 +47,11 @@ class Queue:
             self.queues[chat_id].rotate(remove)
 
     def get_current(self, chat_id: int) -> MediaItem | None:
-        """Return the currently playing item (first in queue), if any."""
+        """First item (now playing), if any."""
         return self.queues[chat_id][0] if self.queues[chat_id] else None
 
     def get_next(self, chat_id: int, check: bool = False) -> MediaItem | None:
-        """Remove current item and return the next one, or None if empty."""
+        """Pop current and return next; check=True only peeks."""
         if not self.queues[chat_id]:
             return None
         if check:
@@ -61,18 +61,18 @@ class Queue:
         return self.queues[chat_id][0] if self.queues[chat_id] else None
 
     def get_queue(self, chat_id: int) -> list[MediaItem]:
-        """Return the full queue including the currently playing item."""
+        """Full queue including now playing."""
         return list(self.queues[chat_id])
 
     def set_queue(self, chat_id: int, items: list[MediaItem]) -> None:
-        """Replace the queue contents (shuffle / clear upcoming)."""
+        """Replace queue contents."""
         self.queues[chat_id] = deque(items)
 
     def remove_current(self, chat_id: int) -> None:
-        """Remove the currently playing item only (if exists)."""
+        """Drop now playing, if any."""
         if self.queues[chat_id]:
             self.queues[chat_id].popleft()
 
     def clear(self, chat_id: int) -> None:
-        """Clear the entire queue."""
+        """Empty the queue."""
         self.queues[chat_id].clear()

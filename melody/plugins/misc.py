@@ -72,8 +72,7 @@ async def update_timer(length=10, sleep=12):
                 if not media:
                     continue
                 duration, message_id = media.duration_sec, media.message_id
-                # Live streams (duration 0) have no progress bar and no
-                # end-of-track prefetch — the stream runs until skipped.
+                # Live has no progress bar or end prefetch; runs until skipped.
                 if not duration or not message_id or not media.time:
                     continue
                 remove = False
@@ -89,10 +88,7 @@ async def update_timer(length=10, sleep=12):
                         and not next.file_path
                         and not getattr(next, "is_live", False)
                     ):
-                        # Fire-and-forget: an inline await here would block
-                        # progress-bar updates for EVERY chat until the
-                        # download finishes. yt's inflight dedup makes
-                        # repeated ticks safe.
+                        # Prefetch async; yt dedups repeats across ticks.
                         asyncio.create_task(
                             yt.download(next.id, video=next.video, prefetch=True)
                         )
@@ -131,14 +127,11 @@ async def vc_watcher(sleep=15):
                 media = queue.get_current(chat_id)
                 if not media:
                     continue
-                # kurigram 2.2 removed get_participants; get_call_members
-                # yields GroupCallMember objects for the active group call.
+                # get_call_members yields GroupCallMember objects.
                 participants = [m async for m in client.get_call_members(chat_id)]
                 if len(participants) < 2 and media.time > 30:
                     _lang = await lang.get_lang(chat_id)
-                    # The status-markup edit is cosmetic; if the now-playing
-                    # message was deleted it raises MessageIdInvalid. Suppress
-                    # it so the auto-stop below always runs.
+                    # Cosmetic edit; suppress if the message was deleted.
                     sent = None
                     with suppress(errors.MessageNotModified, errors.MessageIdInvalid):
                         sent = await app.edit_message_reply_markup(

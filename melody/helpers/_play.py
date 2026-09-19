@@ -15,16 +15,10 @@ from melody.helpers import utils
 
 
 async def _safe_stream_url(url: str) -> bool:
-    """Reject stream URLs that resolve to non-public addresses (SSRF guard).
+    """Allow only http(s) URLs resolving to public addresses (SSRF guard).
 
-    A raw m3u8/HTTP URL is handed to ffmpeg's input demuxer, so an internal
-    hostname or the cloud metadata IP (169.254.169.254) would otherwise be
-    reachable. Allow only http(s) whose every resolved address is public.
-
-    ponytail: DNS is resolved here, not by ffmpeg, so a rebinding attacker
-    could still swap the record between this check and playback (TOCTOU).
-    Closing that fully needs ffmpeg -protocol_whitelist + a pinned IP; this
-    blocks the common internal-target case.
+    shortcut: DNS checked here, not by ffmpeg — a rebinding attacker could
+    swap the record before playback. Blocks the common internal-target case.
     """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -127,10 +121,8 @@ def checkUB(play):
                         )
             except errors.ChatAdminRequired:
                 return await m.reply_text(m.lang["admin_required"])
-            # Kurigram exposes this at the top level; avoid the old internal namespace.
-            # PeerIdInvalid: the bot's session has never met the assistant user
-            # (session strings carry no peer cache), so resolve_peer fails before
-            # Telegram can answer — treat it as "not a participant" and invite.
+            # Fresh sessions have no peer cache, so resolve_peer fails —
+            # treat as "not a participant" and invite.
             except (errors.UserNotParticipant, errors.PeerIdInvalid):
                 if m.chat.username:
                     invite_link = m.chat.username
@@ -154,8 +146,7 @@ def checkUB(play):
                 await asyncio.sleep(2)
                 try:
                     result = await client.join_chat(invite_link)
-                    # kurigram 2.2.24: join_chat swallows InviteRequestSent and
-                    # returns ChatJoinResultRequestSent instead of raising.
+                    # kurigram returns a request object instead of raising here.
                     if isinstance(result, types.ChatJoinResultRequestSent):
                         raise errors.InviteRequestSent
                 except errors.UserAlreadyParticipant:

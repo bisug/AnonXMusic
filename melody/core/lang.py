@@ -51,9 +51,7 @@ def format_lang_name(code: str) -> str:
 
 
 class Language:
-    """
-    Language class for managing multilingual support using JSON language files.
-    """
+    """Multilingual support backed by JSON locale files."""
 
     def __init__(self):
         self.lang_codes = lang_codes

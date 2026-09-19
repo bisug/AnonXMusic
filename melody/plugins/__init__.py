@@ -6,13 +6,7 @@
 from pathlib import Path
 
 def _list_modules():
-    """
-    List all Python module filenames (without extension) in the current directory,
-    excluding the __init__.py file.
-
-    Returns:
-        list: A list of module names as strings.
-    """
+    """Module names in this dir, excluding __init__.py."""
     mod_dir = Path(__file__).parent
     return [
         file.stem

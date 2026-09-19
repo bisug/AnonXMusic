@@ -3,16 +3,13 @@
 # This file is part of Melody
 
 """
-Custom emoji for bot messages.
+Custom emoji for bot messages: name -> Telegram emoji document ID.
 
-Each entry maps a name to a Telegram emoji document ID. Get IDs by sending
-your emoji to @DlEmojiIdBot. Leave a value as None to keep the plain
-Unicode emoji from the locale files.
-
-Note: custom emoji only render for premium users; others see the fallback.
+Get IDs from @DlEmojiIdBot. None keeps the plain Unicode emoji.
+Custom emoji render for premium users only; others see the fallback.
 """
 
-# document IDs from your emoji pack
+# document IDs from your emoji pack (None = plain emoji)
 EMOJI_IDS: dict[str, int | None] = {
     "play": None,
     "pause": None,
@@ -33,7 +30,7 @@ EMOJI_IDS: dict[str, int | None] = {
 
 
 def emoji(key: str, fallback: str) -> str:
-    """Return `fallback` wrapped in a tg-emoji tag, or unchanged if no ID."""
+    """Wrap fallback in a tg-emoji tag, or return it unchanged if no ID."""
     doc_id = EMOJI_IDS.get(key)
     if not doc_id:
         return fallback

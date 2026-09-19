@@ -31,7 +31,7 @@ def setup_signal_handlers(stop_event: asyncio.Event):
             logger.info("Received %s. Shutting down gracefully...", received_signal)
             stop_event.set()
         else:
-            # Second signal → force exit immediately.
+            # Second signal forces immediate exit.
             logger.warning(
                 "Received %s again. Forcing exit.",
                 signal.Signals(signum).name,
@@ -137,7 +137,6 @@ async def main():
         await idle(stop_event)
     finally:
         try:
-            # Await shutdown so cleanup completes before asyncio.run closes the loop.
             await stop(ignore_cleanup_errors=not started)
         finally:
             cleanup_signal_handlers()

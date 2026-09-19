@@ -15,8 +15,7 @@ from pyrogram import filters, types
 from melody import anon, app, boot, config, db, lang, logger
 from melody.helpers import buttons
 
-# Ookla's official Speedtest CLI — a Go binary, not the old speedtest-cli package.
-# Its JSON is written to stdout, progress to stderr.
+# Official Ookla Speedtest CLI (Go binary); JSON on stdout, progress on stderr.
 _OOKLA_CMD = (
     "speedtest",
     "--accept-license",
@@ -24,12 +23,12 @@ _OOKLA_CMD = (
     "--format=json",
     "--progress=no",
 )
-# A full test takes 10-30s; cap it so a hung server can't stall /ping forever.
+# Cap so a hung server can't stall /ping.
 _OOKLA_TIMEOUT = 90
 
 
 def _bandwidth_mbps(bytes_per_second: float) -> str:
-    """Ookla reports bandwidth in bytes/second; render it as Mbps."""
+    """Render bytes/second as Mbps."""
     return f"{bytes_per_second * 8 / 1_000_000:.2f} Mbps"
 
 
@@ -48,16 +47,16 @@ async def _run_speedtest() -> str:
     except TimeoutError:
         logger.warning("Speedtest timed out after %ss.", _OOKLA_TIMEOUT)
         return "N/A"
-    except Exception as ex:  # noqa: BLE001 — probe must never raise; any failure degrades to "N/A"
+    except Exception as ex:  # noqa: BLE001 — probe degrades to "N/A", never raises
         logger.warning("Speedtest failed: %r", ex)
         return "N/A"
     finally:
-        # Never leave the child running, whichever way we exit.
+        # Always kill and reap the child.
         if proc.returncode is None:
             with suppress(ProcessLookupError):
                 proc.kill()
             with suppress(Exception):
-                await proc.wait()  # reap it, so no zombie or GC warning
+                await proc.wait()
 
     if proc.returncode != 0:
         logger.warning(
@@ -83,7 +82,7 @@ async def _db_latency() -> str:
     start = time.perf_counter()
     try:
         await db.mongo.admin.command("ping")
-    except Exception as ex:  # noqa: BLE001 — diagnostics probe must degrade, never raise
+    except Exception as ex:  # noqa: BLE001 — diagnostics degrade, never raise
         logger.warning("DB latency ping failed: %r", ex)
         return "N/A"
     return f"{round((time.perf_counter() - start) * 1000, 2)}ms"
@@ -94,7 +93,7 @@ async def _db_latency() -> str:
 async def _ping(_, m: types.Message):
     start = time.perf_counter()
     sent = await m.reply_text(m.lang["pinging"])
-    # Speedtest takes 10-30s — run it only for /ping speed, not every ping.
+    # Speedtest (10-30s) runs only for /ping speed.
     full = any(tok in ("-s", "speed", "full") for tok in m.command[1:])
     network_speed_task = asyncio.create_task(_run_speedtest()) if full else None
     db_latency_task = asyncio.create_task(_db_latency())

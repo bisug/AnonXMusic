@@ -10,20 +10,13 @@ from pathlib import Path
 
 from melody import logger
 
-# Minimum ffmpeg we rely on (concurrent-fragment merge, current flag set).
-# 5.0 is the floor for the base -reconnect* input flags in calls.py; the
-# newer retry-bounding flags (>= 7.1) are optional and auto-stripped by
-# pytgcalls on older builds.
+# Minimum ffmpeg (base -reconnect* input flags need >= 5.0; newer flags are
+# optional and auto-stripped by pytgcalls on older builds).
 _FFMPEG_MIN = (5, 0)
 
 
 def _assert_ffmpeg_version() -> None:
-    """Assert a minimum ffmpeg version; the PATH check only proves presence.
-
-    Fails closed on a clearly-old build. If the version string can't be run
-    or parsed (git/date-stamped distro builds), warn and continue rather than
-    blocking startup on a probe miss.
-    """
+    """Fail closed on an old ffmpeg build; warn-and-continue on probe miss."""
     try:
         out = subprocess.run(
             ["ffmpeg", "-version"],
@@ -51,9 +44,7 @@ def _assert_ffmpeg_version() -> None:
 
 
 def ensure_dirs():
-    """
-    Ensure that the necessary directories exist.
-    """
+    """Ensure runtime dirs exist; requires ffmpeg on PATH."""
     if not shutil.which("ffmpeg"):
         raise RuntimeError("FFmpeg must be installed and accessible in the system PATH.")
 

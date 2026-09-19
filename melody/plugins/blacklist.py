@@ -8,9 +8,7 @@ from pyrogram import StopPropagation, filters, types
 from melody import anon, app, db, lang, logger
 
 
-# Central enforcement: blacklisted chats are fully ignored. A guard in the
-# lowest handler group swallows every update from them before any command,
-# service-message, or callback handler in group >= 0 can run.
+# Blacklisted chats are fully ignored via a group=-1 guard.
 @app.on_message(app.bl_chats, group=-1)
 async def _bl_chat_guard(_, __):
     raise StopPropagation
@@ -44,8 +42,7 @@ async def _blacklist(_, m: types.Message):
         logger.warning("Blacklist target resolution failed for %r: %r", m.command[1], ex)
         return await m.reply_text(m.lang["bl_invalid"])
 
-    # mongo.add_blacklist classifies by a leading "-" (chat vs user); mirror it
-    # so the runtime filter matches what gets persisted.
+    # Leading "-" means chat; mirrors mongo.add_blacklist classification.
     is_chat = str(chat_id).startswith("-")
     runtime = app.bl_chats if is_chat else app.bl_users
 

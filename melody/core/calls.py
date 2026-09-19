@@ -23,7 +23,7 @@ from melody.helpers import Media, Track, buttons
 class TgCall(PyTgCalls):
     def __init__(self):
         self.clients = []
-        # Per-chat next-track prefetch downloads, cancelled on stop.
+        # Prefetch downloads cancelled on stop.
         self._prefetch: dict[int, asyncio.Task] = {}
 
     async def pause(self, chat_id: int) -> bool:
@@ -43,7 +43,7 @@ class TgCall(PyTgCalls):
         if prefetch and not prefetch.done():
             prefetch.cancel()
         current = queue.get_current(chat_id)
-        # Skip message deletion during shutdown to avoid hanging network calls.
+        # No message deletion during shutdown (would hang).
         if current and current.message_id and not is_shutting_down():
             try:
                 await app.delete_messages(
@@ -100,40 +100,25 @@ class TgCall(PyTgCalls):
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             return await self.play_next(chat_id)
 
-        # Live streams resolve to HLS URLs, never local files. YouTube live
-        # HLS is demuxed: stream_url() returns "video|audio" for video mode
-        # (two variant playlists) or a single audio URL otherwise.
+        # Live HLS is demuxed: "video|audio" pair for video mode, else one URL.
         is_live = getattr(media, "is_live", False)
         media_path = media.file_path
         audio_path = None
         if is_live and "|" in str(media.file_path):
             media_path, audio_path = media.file_path.split("|", 1)
 
-        # pytgcalls injects ffmpeg_parameters before -i (input options).
-        # For network streams (m3u8/HLS, where file_path is a URL) add
-        # reconnect flags so a transient blip doesn't end playback; for
-        # local files they'd be ignored, so only apply to URL inputs.
-        #
-        # pytgcalls' cleanup_commands() runs `ffmpeg -h full` and strips
-        # any flag the installed binary doesn't advertise, so the newer
-        # flags below are a free upgrade: ffmpeg >= 7.1 (reconnect_max_
-        # retries / reconnect_delay_total_max / respect_retry_after) and
-        # >= 6.1 (reconnect_on_network_error / reconnect_on_http_error)
-        # use them; older builds silently drop them and keep the base
-        # reconnect set. No version probing needed.
+        # Reconnect flags apply to URL inputs only (ignored for local files).
+        # pytgcalls strips flags the installed ffmpeg doesn't advertise, so
+        # newer flags (>= 6.1/7.1) degrade gracefully on older builds.
         ffmpeg_args = []
         if str(media_path).startswith(("http://", "https://")):
             ffmpeg_args.append(
-                # Base set (ffmpeg >= 5.0): reconnect on disconnect,
-                # cover non-seekable streams, cap per-attempt backoff.
+                # Base (>= 5.0): reconnect, cover non-seekable, cap backoff.
                 "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 "
-                # Retry on TCP/TLS failures during connect, not just EOF
-                # (>= 6.1), and on transient 5xx from googlevideo (>= 6.1).
+                # Retry TCP/TLS and transient 5xx (>= 6.1).
                 "-reconnect_on_network_error 1 "
                 "-reconnect_on_http_error 429,500,502,503,504 "
-                # Bound the retry storm (>= 7.1): at most 8 attempts and
-                # 30s total backoff, so a dead stream fails fast instead
-                # of hanging the call for minutes.
+                # Bound retries: 8 attempts, 30s backoff (>= 7.1).
                 "-reconnect_max_retries 8 -reconnect_delay_total_max 30"
             )
         if seek_time > 1:
@@ -163,10 +148,7 @@ class TgCall(PyTgCalls):
                     _thumb = await _thumb_task
                 media.time = 1
                 await db.add_call(chat_id)
-                # Pre-fetch the next queued track in the background so there
-                # is no download gap when the current track ends. Skipped for
-                # live streams — a live track never ends on its own, and a
-                # parallel download would fight the stream for bandwidth.
+                # Prefetch next track; skipped for live (never ends).
                 _next = queue.get_next(chat_id, check=True)
                 if (
                     not is_live
@@ -271,7 +253,7 @@ class TgCall(PyTgCalls):
 
         media = queue.get_next(chat_id)
 
-        # Guard must come BEFORE any attribute access on media
+        # Guard before any attribute access: empty queue ends playback.
         if not media:
             return await self.stop(chat_id)
 
@@ -334,20 +316,12 @@ class TgCall(PyTgCalls):
 
 
     async def exit(self) -> None:
-        """
-        Leave active group calls and release local PyTgCalls resources.
-
-        Skips Telegram network calls (message deletion) since this runs
-        during shutdown when the bot connection is being torn down.
-        ``is_shutting_down()`` guards the inner delete_messages call inside
-        ``stop()``, so it is safe to call stop() from here.
-        """
+        """Leave active calls and release PyTgCalls resources (shutdown path)."""
         clients = list(self.clients)
         if not clients:
             return
 
-        # Leave every active call; stop() skips message deletion automatically
-        # because is_shutting_down() returns True at this point.
+        # stop() skips message deletion during shutdown via is_shutting_down().
         for chat_id in list(db.active_calls):
             with suppress(Exception):
                 await self.stop(chat_id)

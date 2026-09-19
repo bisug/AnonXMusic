@@ -52,8 +52,7 @@ async def inline_query_handler(_, query: types.InlineQuery):
             )
 
         if not answers:
-            # Answer with a visible placeholder instead of leaving the
-            # inline query spinner hanging forever.
+            # Placeholder so the inline spinner doesn't hang.
             answers = [
                 types.InlineQueryResultArticle(
                     id="no_results",

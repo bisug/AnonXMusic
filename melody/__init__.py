@@ -28,20 +28,13 @@ logger = logging.getLogger(__name__)
 
 
 def _uvloop_needs_deprecation_filter(uvloop_version: str | None = None) -> bool:
-    """True while uvloop probes handlers with the deprecated asyncio helper.
-
-    uvloop <=0.22.1 checks signal handlers from its C layer with
-    asyncio.iscoroutinefunction, so Python 3.14 warns once per
-    add_signal_handler() call and blames our call site in melody/__main__.py.
-    Upstream master already uses inspect.iscoroutinefunction, so gating the
-    filter on the version retires it by itself once a fixed uvloop ships.
-    """
+    """True while installed uvloop (<= 0.22.1) triggers the 3.14 iscoroutinefunction warning."""
     if uvloop_version is None:
         try:
             uvloop_version = version("uvloop")
         except PackageNotFoundError:
             return False  # not installed (e.g. win32): nothing to silence
-    # "0.22.1" -> (0, 22, 1); unparseable versions fail safe by warning.
+    # "0.22.1" -> (0, 22, 1); unparseable fails safe (warn).
     numbers = tuple(int(part) for part in uvloop_version.split(".") if part.isdigit())
     if not numbers:
         return False
@@ -70,7 +63,7 @@ boot = time.time()
 
 
 def is_shutting_down() -> bool:
-    """Return True once the shutdown sequence has begun."""
+    """True once shutdown has begun."""
     return _shutting_down
 
 
@@ -180,7 +173,7 @@ async def stop(ignore_cleanup_errors: bool = False) -> None:
             ("thumbnails", thumb.close),
         )
 
-        # Hard deadline: the entire cleanup must finish within 60 seconds.
+        # Hard deadline: whole cleanup must finish in 60s.
         try:
             async with asyncio.timeout(60):
                 for name, closer in cleaners:
