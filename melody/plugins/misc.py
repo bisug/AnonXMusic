@@ -19,6 +19,17 @@ async def _watcher_vc(_, m: types.Message):
     await anon.stop(m.chat.id)
 
 
+_bg_tasks: set[asyncio.Task] = set()
+
+
+def _spawn_bg(coro) -> asyncio.Task:
+    """create_task with a strong ref; the loop only holds weak refs."""
+    task = asyncio.create_task(coro)
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
+    return task
+
+
 async def auto_leave():
     while True:
         await asyncio.sleep(3600)
@@ -89,7 +100,7 @@ async def update_timer(length=10, sleep=12):
                         and not getattr(next, "is_live", False)
                     ):
                         # Prefetch async; yt dedups repeats across ticks.
-                        asyncio.create_task(
+                        _spawn_bg(
                             yt.download(next.id, video=next.video, prefetch=True)
                         )
 
@@ -97,9 +108,6 @@ async def update_timer(length=10, sleep=12):
                     remove = True
 
                 timer = f"{time.strftime('%M:%S', time.gmtime(played))} | {timer} | -{time.strftime('%M:%S', time.gmtime(remaining))}"
-
-                if not timer and not remove:
-                    continue
 
                 await app.edit_message_reply_markup(
                     chat_id=chat_id,
