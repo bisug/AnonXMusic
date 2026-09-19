@@ -82,14 +82,14 @@ EOF
 }
 
 
-pprint "Welcome to the AnonXMusic Installation Setup\n\n" "cmagenta"
+pprint "Welcome to the Melody Installation Setup\n\n" "cmagenta"
 
 update
 install_pkgs python3 python3-venv ffmpeg curl unzip
 install_uv || exit 1
 install_py
 
-pprint "\nAnonXMusic Installation Completed.\n" "cgreen"
+pprint "\nMelody Installation Completed.\n" "cgreen"
 
 pprint "\nEnter Your Values Below\n\n\n" "cmagenta"
 read -rp "API ID: " api_id
@@ -102,4 +102,4 @@ read -rp "STRING SESSION: " string_session
 
 save_env_vars "$api_id" "$api_hash" "$bot_token" "$mongo_db" "$logger" "$string_session" "$ownid"
 
-pprint "\nSetup complete! Start the bot using:\n\n  uv run python3 -m anony\n\n" "cgreen"
+pprint "\nSetup complete! Start the bot using:\n\n  uv run python3 -m melody\n\n" "cgreen"

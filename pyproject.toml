@@ -1,5 +1,5 @@
 [project]
-name = "anonxmusic"
+name = "melody"
 version = "3.0.3"
 description = "Telegram Group Calls Streaming bot with some useful features."
 readme = ".github/README.md"

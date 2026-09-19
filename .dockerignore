@@ -13,7 +13,7 @@ cache/
 downloads/
 log.txt
 *.log
-anony/cookies/*.txt
+melody/cookies/*.txt
 
 # --- Python ---
 __pycache__/

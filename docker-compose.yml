@@ -1,4 +1,4 @@
-# Docker Compose for running AnonXMusic on a VPS.
+# Docker Compose for running Melody on a VPS.
 # Usage:
 #   1. cp sample.env .env   &&  edit .env with your values
 #   2. docker compose up -d --build
@@ -26,6 +26,6 @@ services:
       - pot-provider
     # Persist downloaded cookies across restarts (optional).
     volumes:
-      - ./anony/cookies:/app/anony/cookies
+      - ./melody/cookies:/app/melody/cookies
     # This bot has no inbound HTTP server; it connects out to Telegram only.
     # No ports are published on purpose.

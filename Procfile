@@ -1,1 +1,1 @@
-worker: python3 -m anony
+worker: python3 -m melody

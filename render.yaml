@@ -1,4 +1,4 @@
-# Render Blueprint for AnonXMusic.
+# Render Blueprint for Melody.
 # Secret values are entered in the Render Dashboard when the Blueprint is deployed.
 services:
   - type: worker

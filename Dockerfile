@@ -30,7 +30,7 @@ FROM python:3.14-slim AS runtime
 
 # Static ffmpeg 9.0 (BtbN GPL build) — newer than any Debian release ships,
 # so the reconnect_max_retries / reconnect_delay_total_max input flags in
-# anony/core/calls.py are honored. pytgcalls strips unknown flags on older
+# melody/core/calls.py are honored. pytgcalls strips unknown flags on older
 # builds, so the app stays compatible either way. Only ffmpeg + ffprobe are
 # extracted (ffplay alone is ~145MB and needs X libs the bot never uses).
 RUN apt-get update -y \
@@ -57,16 +57,16 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1
 
 # App code — last layer so code changes don't invalidate the deps layer.
-COPY anony ./anony
+COPY melody ./melody
 COPY config.py ./
 
 # Run as a non-root user; the bot only talks outbound to Telegram/Mongo.
 RUN useradd --system --no-create-home appuser \
-    && mkdir -p cache downloads anony/cookies \
+    && mkdir -p cache downloads melody/cookies \
     && chown -R appuser:appuser /app
 USER appuser
 
-# start runs `uv run python3 -m anony`; with the venv already on PATH and
+# start runs `uv run python3 -m melody`; with the venv already on PATH and
 # fully synced, uv resolves to it instantly — but uv isn't in this stage.
 # Invoke the interpreter directly instead; identical result, no uv needed.
-CMD ["/app/.venv/bin/python", "-m", "anony"]
+CMD ["/app/.venv/bin/python", "-m", "melody"]
