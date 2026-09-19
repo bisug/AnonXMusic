@@ -15,10 +15,8 @@ from melody.helpers import can_manage_vc
 async def _stop(_, m: types.Message):
     if len(m.command) > 1:
         return
-
-    call = await db.get_call(m.chat.id)
-    await anon.stop(m.chat.id)
-    if not call:
+    if not await db.get_call(m.chat.id):
         return await m.reply_text(m.lang["not_playing"])
 
+    await anon.stop(m.chat.id)
     await m.reply_text(m.lang["play_stopped"].format(m.from_user.mention))

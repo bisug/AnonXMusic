@@ -29,7 +29,16 @@ async def cancel_dl(_, query: types.CallbackQuery):
 @can_manage_vc
 async def _controls(_, query: types.CallbackQuery):
     args = query.data.split()
-    action, chat_id = args[1], int(args[2])
+    actions = {"status", "pause", "resume", "skip", "force", "replay", "stop"}
+    if len(args) < 3 or args[1] not in actions:
+        return await query.answer()
+    if args[1] == "force" and len(args) != 4:
+        return await query.answer()
+    try:
+        chat_id = int(args[2])
+    except ValueError:
+        return await query.answer()
+    action = args[1]
     # Button must live in the target chat (blocks forwarded-message abuse).
     if not query.message or chat_id != query.message.chat.id:
         return await query.answer(query.lang["user_no_perms"], show_alert=True)

@@ -156,5 +156,60 @@ class LocaleFallbackTest(unittest.TestCase):
             self.assertTrue(english_keys <= set(lang.resolve(code)), code)
 
 
+class PlaylistTruncationTest(unittest.TestCase):
+    """Audit fix: the expandable blockquote must not be cut mid-tag/entity."""
+
+    def setUp(self):
+        from melody import config, queue
+
+        self._ql = config.QUEUE_LIMIT
+        config.QUEUE_LIMIT = 1000
+        self._q = queue
+        self._cid = 990001
+
+    def tearDown(self):
+        from melody import config
+
+        config.QUEUE_LIMIT = self._ql
+        self._q.clear(self._cid)
+
+    def run_body(self, titles):
+        from melody.plugins.play import playlist_to_queue
+
+        from melody.helpers import Track
+
+        tracks = [
+            Track(id=f"v{i}", title=t, duration="3:00", duration_sec=180, user="u")
+            for i, t in enumerate(titles)
+        ]
+        body, added, _ = playlist_to_queue(self._cid, tracks)
+        return body, added
+
+    def test_long_list_cut_at_line_boundary_keeps_html_valid(self):
+        # 500 long titles blow past the 1948-char cap; the cut must land on a
+        # newline so the closing </blockquote> never splits a tag.
+        body, added = self.run_body(["<b>Tune & Co</b> " + "x" * 40] * 500)
+        self.assertEqual(added, 500)
+        self.assertLessEqual(len(body), 1962)
+        self.assertTrue(body.startswith("<blockquote expandable>"))
+        self.assertTrue(body.endswith("</blockquote>"))
+        self.assertIn("\n", body)
+        self.assertFalse(body.rstrip("</blockquote>").endswith("<b>"))
+
+    def test_short_list_untouched(self):
+        body, added = self.run_body(["Song One", "Song Two"])
+        self.assertEqual(added, 2)
+        self.assertIn("1.</b> Song One", body)
+        self.assertIn("2.</b> Song Two", body)
+        self.assertTrue(body.endswith("</blockquote>"))
+
+    def test_cut_never_splits_entity(self):
+        # Entity "&amp;" spans the old blind-cut boundary in the worst case;
+        # line-boundary cutting keeps every emitted line intact.
+        body, _ = self.run_body(["A &amp; B " + "y" * 60] * 200)
+        for line in body.split("\n"):
+            self.assertEqual(line.count("<b>"), line.count("</b>"))
+
+
 if __name__ == "__main__":
     unittest.main()

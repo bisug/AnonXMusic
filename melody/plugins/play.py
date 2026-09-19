@@ -27,7 +27,11 @@ def playlist_to_queue(chat_id: int, tracks: list) -> tuple[str, int, int]:
         pos = queue.add(chat_id, track)
         text += f"<b>{pos + 1}.</b> {track.title}\n"
         added += 1
-    text = text[:1948] + "</blockquote>"
+    if len(text) > 1948:
+        # Cut at the last line boundary so we never split an HTML tag/entity.
+        text = text[:1948]
+        text = text[: text.rfind("\n")] if "\n" in text else text
+    text += "</blockquote>"
     return text, added, skipped
 
 
