@@ -44,13 +44,11 @@ async def _run_speedtest() -> str:
         stderr=asyncio.subprocess.PIPE,
     )
     try:
-        stdout, stderr = await asyncio.wait_for(
-            proc.communicate(), _OOKLA_TIMEOUT
-        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), _OOKLA_TIMEOUT)
     except TimeoutError:
         logger.warning("Speedtest timed out after %ss.", _OOKLA_TIMEOUT)
         return "N/A"
-    except Exception as ex:
+    except Exception as ex:  # noqa: BLE001 — probe must never raise; any failure degrades to "N/A"
         logger.warning("Speedtest failed: %r", ex)
         return "N/A"
     finally:
@@ -85,7 +83,7 @@ async def _db_latency() -> str:
     start = time.perf_counter()
     try:
         await db.mongo.admin.command("ping")
-    except Exception as ex:
+    except Exception as ex:  # noqa: BLE001 — diagnostics probe must degrade, never raise
         logger.warning("DB latency ping failed: %r", ex)
         return "N/A"
     return f"{round((time.perf_counter() - start) * 1000, 2)}ms"

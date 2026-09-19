@@ -26,6 +26,7 @@ logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("pytgcalls").setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 
+
 def _uvloop_needs_deprecation_filter(uvloop_version: str | None = None) -> bool:
     """True while uvloop probes handlers with the deprecated asyncio helper.
 
@@ -71,6 +72,7 @@ boot = time.time()
 def is_shutting_down() -> bool:
     """Return True once the shutdown sequence has begun."""
     return _shutting_down
+
 
 from melody.core.bot import Bot
 

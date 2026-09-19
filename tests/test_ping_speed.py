@@ -66,9 +66,10 @@ class FakeProc:
 
 
 def run_speedtest(proc: FakeProc, which: str | None = "/usr/bin/speedtest") -> str:
+    spawner = mock.AsyncMock(return_value=proc)
     with (
         mock.patch.object(ping.shutil, "which", return_value=which),
-        mock.patch("asyncio.create_subprocess_exec", new=mock.AsyncMock(return_value=proc)),
+        mock.patch("asyncio.create_subprocess_exec", new=spawner),
     ):
         return asyncio.run(ping._run_speedtest())
 
@@ -101,11 +102,13 @@ class RunSpeedtestTest(unittest.TestCase):
 
     def test_parses_ookla_json(self):
         proc = FakeProc(stdout=json.dumps(OOKLA_SAMPLE).encode())
-        self.assertEqual(run_speedtest(proc), "DL: 100.00 Mbps | UL: 20.00 Mbps | Ping: 12.34ms")
+        expected = "DL: 100.00 Mbps | UL: 20.00 Mbps | Ping: 12.34ms"
+        self.assertEqual(run_speedtest(proc), expected)
         self.assertFalse(proc.killed)
 
     def test_nonzero_exit_returns_na(self):
-        self.assertEqual(run_speedtest(FakeProc(stderr=b"no servers", returncode=1)), "N/A")
+        proc = FakeProc(stderr=b"no servers", returncode=1)
+        self.assertEqual(run_speedtest(proc), "N/A")
 
     def test_missing_fields_returns_na(self):
         proc = FakeProc(stdout=json.dumps({"download": {"bandwidth": 1000}}).encode())
@@ -120,14 +123,15 @@ class RunSpeedtestTest(unittest.TestCase):
             raise TimeoutError
 
         proc = FakeProc(stdout=json.dumps(OOKLA_SAMPLE).encode())
+        spawner = mock.AsyncMock(return_value=proc)
         with (
             mock.patch.object(ping.shutil, "which", return_value="/usr/bin/speedtest"),
-            mock.patch("asyncio.create_subprocess_exec", new=mock.AsyncMock(return_value=proc)),
+            mock.patch("asyncio.create_subprocess_exec", new=spawner),
             mock.patch("asyncio.wait_for", side_effect=_expire),
         ):
             self.assertEqual(asyncio.run(ping._run_speedtest()), "N/A")
         self.assertTrue(proc.killed)
-        self.assertTrue(proc.reaped, "killed child must be reaped via await proc.wait()")
+        self.assertTrue(proc.reaped, "killed child must be reaped")
 
 
 if __name__ == "__main__":
