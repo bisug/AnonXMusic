@@ -34,6 +34,10 @@ jobs:
         # This prevents failure on purely stylistic issues.
         uv run ruff check . --select=E9,F63,F7,F82 --output-format=github
 
+    - name: Run tests
+      # Offline unit tests (no network, no Telegram/Mongo needed).
+      run: uv run python -m unittest discover -s tests -v
+
   docker-build:
     runs-on: ubuntu-latest
     needs: lint-and-check
