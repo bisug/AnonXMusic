@@ -82,6 +82,7 @@ install_speedtest() {
             ;;
     esac
 
+    # Ookla publishes no checksums for these tarballs (checked 2026-09-19).
     # Optional: only "/ping speed" needs it, so a failure is not fatal.
     pprint "Installing Ookla Speedtest CLI... " "cyellow"
     if curl -sL "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-${st_arch}.tgz" -o /tmp/ookla-speedtest.tgz \

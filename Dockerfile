@@ -57,6 +57,8 @@ RUN apt-get update -y \
         *) st_arch="" ;; \
        esac \
     && if [ -n "$st_arch" ]; then \
+        # Ookla publishes no checksums for these tarballs (checked 2026-09-19);
+        # download is TLS-only and failure-tolerant (optional probe).
         curl -sL "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-${st_arch}.tgz" \
             -o /tmp/st.tgz \
         && tar -xzf /tmp/st.tgz -C /tmp speedtest \
