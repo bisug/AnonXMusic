@@ -3,6 +3,8 @@
 # This file is part of Melody
 
 
+import random
+
 from pyrogram import filters, types
 
 from melody import app, config, db, lang, queue, thumb
@@ -21,7 +23,6 @@ async def _shuffle(_, m: types.Message):
     if len(items) < 3:
         return await m.reply_text(m.lang["shuffle_need_more"])
 
-    import random
     upcoming = items[1:]
     random.shuffle(upcoming)
     queue.set_queue(m.chat.id, [items[0], *upcoming])

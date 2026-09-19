@@ -14,4 +14,4 @@ def _list_modules():
         if file.is_file() and file.name != "__init__.py"
     ]
 
-all_modules = frozenset(sorted(_list_modules()))
+all_modules = tuple(sorted(_list_modules()))

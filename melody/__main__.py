@@ -63,10 +63,6 @@ def setup_signal_handlers(stop_event: asyncio.Event):
     return cleanup
 
 
-async def idle(stop_event: asyncio.Event):
-    await stop_event.wait()
-
-
 async def load_access_filters() -> None:
     sudoers = await db.get_sudoers()
     blacklisted = await db.get_blacklisted()
@@ -134,7 +130,7 @@ async def main():
 
         logger.info("Startup complete; bot is ready.")
 
-        await idle(stop_event)
+        await stop_event.wait()
     finally:
         try:
             await stop(ignore_cleanup_errors=not started)

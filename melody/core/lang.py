@@ -72,8 +72,8 @@ class Language:
         return self.languages[lang_code]
 
     def get_languages(self) -> dict:
-        files = {f.stem for f in self.lang_dir.glob("*.json")}
-        return {code: self.lang_codes[code] for code in sorted(files)}
+        # Reuse the locales loaded at startup instead of re-globbing the dir.
+        return {code: self.lang_codes[code] for code in sorted(self.languages)}
 
     def language(self):
         def decorator(func):

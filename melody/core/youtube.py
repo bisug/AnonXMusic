@@ -52,7 +52,6 @@ class YouTube:
             r"(?!/(watch\?v=[A-Za-z0-9_-]{11}|shorts/[A-Za-z0-9_-]{11}"
             r"|playlist\?list=[A-Za-z0-9_-]+|[A-Za-z0-9_-]{11}))\S*"
         )
-        self.api_warned = False
         # Same-id requests share one download task.
         self._inflight: dict[str, asyncio.Task] = {}
         # Waiter count per id; zero aborts the download via progress hook.

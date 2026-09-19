@@ -4,6 +4,7 @@
 
 """HTTP fallback providers: (video_id, video) -> local path or None."""
 
+from contextlib import suppress
 from pathlib import Path
 
 import aiohttp
@@ -21,6 +22,13 @@ def _filename(video_id: str, video: bool) -> Path:
 
 def _usable(path: Path) -> bool:
     return path.exists() and path.is_file() and path.stat().st_size > 0
+
+
+def _discard_partial(tmpfile: Path, filename: Path) -> None:
+    """Drop an incomplete .part file once a download fails."""
+    if tmpfile.exists() and not _usable(filename):
+        with suppress(OSError):
+            tmpfile.unlink()
 
 
 async def _stream_to_file(
@@ -95,11 +103,7 @@ async def shrutibots(video_id: str, video: bool = False) -> str | None:
         logger.warning("ShrutiBots error for %s: %s", video_id, ex)
         return None
     finally:
-        if tmpfile.exists() and not _usable(filename):
-            try:
-                tmpfile.unlink()
-            except Exception:
-                pass
+        _discard_partial(tmpfile, filename)
 
 
 async def onegrab(video_id: str, video: bool = False) -> str | None:
@@ -146,11 +150,7 @@ async def onegrab(video_id: str, video: bool = False) -> str | None:
         logger.warning("OneGrab error for %s: %s", video_id, ex)
         return None
     finally:
-        if tmpfile.exists() and not _usable(filename):
-            try:
-                tmpfile.unlink()
-            except Exception:
-                pass
+        _discard_partial(tmpfile, filename)
 
 
 async def nexgen(video_id: str, video: bool = False) -> str | None:
@@ -203,8 +203,4 @@ async def nexgen(video_id: str, video: bool = False) -> str | None:
         logger.warning("NexGen error for %s: %s", video_id, ex)
         return None
     finally:
-        if tmpfile.exists() and not _usable(filename):
-            try:
-                tmpfile.unlink()
-            except Exception:
-                pass
+        _discard_partial(tmpfile, filename)

@@ -11,9 +11,6 @@ from melody import app
 
 
 class Utilities:
-    def __init__(self):
-        pass
-
     def format_eta(self, seconds: int) -> str:
         if seconds < 60:
             return f"{seconds}s"
