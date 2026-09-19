@@ -6,6 +6,7 @@
 import time
 import asyncio
 import logging
+import warnings
 from logging.handlers import RotatingFileHandler
 
 logging.basicConfig(
@@ -23,6 +24,16 @@ logging.getLogger("pymongo").setLevel(logging.ERROR)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("pytgcalls").setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
+
+# uvloop <=0.22.1 probes handlers with the deprecated asyncio.iscoroutinefunction
+# from its C layer, so Python 3.14 warns once per add_signal_handler() call and
+# blames our call site. Upstream master already uses
+# inspect.iscoroutinefunction; drop this filter once uvloop >0.22.1 is released.
+warnings.filterwarnings(
+    "ignore",
+    message=r"'asyncio\.iscoroutinefunction' is deprecated",
+    category=DeprecationWarning,
+)
 
 
 __version__ = "3.0.3"
