@@ -26,6 +26,10 @@ jobs:
         with:
           python-version-file: ".python-version"
 
+      - name: Install ffmpeg
+        # melody/__init__ imports ensure_dirs(), which requires ffmpeg on PATH.
+        run: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Install dependencies
         run: uv sync --frozen
 
@@ -45,7 +49,7 @@ jobs:
       - name: Check markdown links
         uses: lycheeverse/lychee-action@v2.9.0
         with:
-          args: --no-progress --exclude-mail '.github/README.md' 'wiki/*.md'
+          args: --no-progress --exclude '^mailto:' '.github/README.md' 'wiki/*.md'
 
   docker-build:
     runs-on: ubuntu-latest
