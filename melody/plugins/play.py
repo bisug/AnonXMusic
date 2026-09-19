@@ -25,7 +25,7 @@ def playlist_to_queue(chat_id: int, tracks: list) -> tuple[str, int, int]:
             skipped += 1
             continue
         pos = queue.add(chat_id, track)
-        text += f"<b>{pos}.</b> {track.title}\n"
+        text += f"<b>{pos + 1}.</b> {track.title}\n"
         added += 1
     text = text[:1948] + "</blockquote>"
     return text, added, skipped

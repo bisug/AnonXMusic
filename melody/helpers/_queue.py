@@ -15,7 +15,7 @@ class Queue:
         self.queues: dict[int, deque[MediaItem]] = defaultdict(deque)
 
     def add(self, chat_id: int, item: MediaItem) -> int:
-        """Add an item to the queue and return its position (1-based)."""
+        """Add an item to the queue and return its 0-based index (0 = now playing)."""
         self.queues[chat_id].append(item)
         return len(self.queues[chat_id]) - 1
 
