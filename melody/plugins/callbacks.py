@@ -83,7 +83,8 @@ async def _controls(_, query: types.CallbackQuery):
         if not media or pos == -1:
             return await query.edit_message_text(query.lang["play_expired"])
 
-        m_id = queue.get_current(chat_id).message_id
+        current = queue.get_current(chat_id)
+        m_id = current.message_id if current else 0
         queue.force_add(chat_id, media, remove=pos)
         try:
             await app.delete_messages(
@@ -104,6 +105,8 @@ async def _controls(_, query: types.CallbackQuery):
 
     elif action == "replay":
         media = queue.get_current(chat_id)
+        if not media:
+            return
         media.user = user
         await anon.replay(chat_id)
         status = query.lang["replayed"]

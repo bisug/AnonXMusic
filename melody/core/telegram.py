@@ -106,12 +106,18 @@ class Telegram:
 
         try:
             file_path = f"downloads/{file_id}.{file_ext}"
-            if not os.path.exists(file_path):
-                if file_id in self.active:
-                    await sent.edit_text(sent.lang["dl_active"])
-                    return await sent.stop_propagation()
+            owns_download = False
+            # In-flight check must come first: a second call for the same file
+            # used to fall through here and clear the flag the active
+            # downloader set, letting a third call download to the same
+            # `.temp` path and corrupt it.
+            if file_id in self.active:
+                await sent.edit_text(sent.lang["dl_active"])
+                return await sent.stop_propagation()
 
+            if not os.path.exists(file_path):
                 self.active.add(file_id)
+                owns_download = True
                 task = asyncio.create_task(
                     msg.download(file_name=file_path, progress=progress)
                 )
@@ -142,7 +148,10 @@ class Telegram:
             self.events.pop(msg_id, None)
             self.last_edit.pop(msg_id, None)
             self.active_tasks.pop(msg_id, None)
-            self.active.discard(file_id)
+            # Only release the id this call registered; otherwise the guard is
+            # defeated and duplicate downloads race on the same temp file.
+            if owns_download:
+                self.active.discard(file_id)
 
 
     async def process_m3u8(self, url: str, msg_id: int, video: bool) -> Media:

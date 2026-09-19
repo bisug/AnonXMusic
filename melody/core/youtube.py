@@ -59,6 +59,11 @@ class YouTube:
 
     def _usable_file(self, filename: str | Path) -> bool:
         path = Path(filename)
+        # yt-dlp downloads to `<name>.part` (and writes a `<name>.ytdl` sidecar)
+        # before renaming; those are incomplete and must never be treated as a
+        # finished download or a concurrent request plays a truncated file.
+        if path.suffix in (".part", ".ytdl"):
+            return False
         return path.exists() and path.is_file() and path.stat().st_size > 0
 
     def _api_enabled(self) -> bool:

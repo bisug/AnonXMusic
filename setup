@@ -107,6 +107,8 @@ LOGGER_ID=$5
 SESSION=$6
 OWNER_ID=$7
 EOF
+    # Bot token + string session are credentials; never leave them world-readable.
+    chmod 600 .env
 }
 
 

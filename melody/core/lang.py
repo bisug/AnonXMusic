@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pyrogram import errors
 
-from melody import db, logger
+from melody import config, db, logger
 
 lang_codes = {
     "ar": "العربية",
@@ -64,16 +64,31 @@ class Language:
         for lang_code, lang_file in lang_files.items():
             with open(lang_file, encoding="utf-8") as file:
                 languages[lang_code] = json.load(file)
+        # Merge English underneath every locale so a missing translation key
+        # can never KeyError a handler (queue/shuffle keys were absent from
+        # most locales). Per-locale values still win.
+        if "en" in languages:
+            base = languages["en"]
+            languages = {code: {**base, **data} for code, data in languages.items()}
         logger.info(f"Loaded languages: {', '.join(languages.keys())}")
         return languages
 
+    def resolve(self, lang_code: str) -> dict:
+        """Locale dict for a code, falling back to config/en for unknown codes."""
+        return (
+            self.languages.get(lang_code)
+            or self.languages.get(config.LANG_CODE)
+            or self.languages.get("en")
+            or next(iter(self.languages.values()))
+        )
+
     async def get_lang(self, chat_id: int) -> dict:
         lang_code = await db.get_lang(chat_id)
-        return self.languages[lang_code]
+        return self.resolve(lang_code)
 
     def get_languages(self) -> dict:
         # Reuse the locales loaded at startup instead of re-globbing the dir.
-        return {code: self.lang_codes[code] for code in sorted(self.languages)}
+        return {code: self.lang_codes.get(code, code) for code in sorted(self.languages)}
 
     def language(self):
         def decorator(func):
@@ -103,7 +118,7 @@ class Language:
                     return await chat.leave()
 
                 lang_code = await db.get_lang(chat.id)
-                lang_dict = self.languages[lang_code]
+                lang_dict = self.resolve(lang_code)
 
                 setattr(fallen, "lang", lang_dict)
                 try:

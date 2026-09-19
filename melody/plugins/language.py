@@ -45,7 +45,12 @@ async def _lang_cb(_, query: types.CallbackQuery):
             query.lang["lang_choose"], reply_markup=keyboard
         )
 
-    action, selected = data[0], data[1]
+    action, selected = data[0], data[1] if len(data) > 1 else ""
+    if selected not in lang.languages:
+        # Callback data is client-supplied; never persist an unknown code
+        # (it would KeyError every later language lookup for that chat).
+        return await query.answer()
+
     current = await db.get_lang(query.message.chat.id)
     onboarding = action in {"lang_start", "lang_group"}
     selected_name = format_lang_name(selected)
@@ -55,7 +60,7 @@ async def _lang_cb(_, query: types.CallbackQuery):
         )
 
     await db.set_lang(query.message.chat.id, selected)
-    selected_lang = lang.languages[selected]
+    selected_lang = lang.resolve(selected)
     await query.answer(
         selected_lang["lang_change"].format(selected_name), show_alert=True
     )

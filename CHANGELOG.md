@@ -9,6 +9,12 @@ All notable changes to Melody. Format based on Keep a Changelog; versions follow
 - Fire-and-forget prefetch task in the playback timer held no strong reference and could be garbage-collected mid-download (asyncio loops keep only weak task refs). Background tasks are now tracked until done.
 - Telegram download state (`active_tasks`) leaked on failed downloads; now cleared in `finally`.
 - Removed dead condition in the playback progress timer (`timer` is always non-empty).
+- `/play` on a replied Telegram file crashed with `AttributeError: 'Media' object has no attribute 'is_live'`; `Media` now carries the flag like `Track`.
+- `Language` now merges English under every locale, so a missing translation key can no longer `KeyError` a handler (`/shuffle`, `/clear` failed in every non-English locale).
+- The download cache no longer accepts yt-dlp `.part`/`.ytdl` artifacts as finished files, which could play a truncated track during a concurrent download.
+- A concurrent Telegram download cleared the in-flight guard on early return, allowing a duplicate download to the same `.temp` path and corrupting it.
+- Unvalidated language callback data could persist an unknown code and brick a chat's language lookups; unknown codes are now rejected.
+- `setup` writes `.env` with `0600` (it holds the bot token and string session).
 
 ### Changed
 - CI pinned to current action majors; Docker build uses Buildx with GHA cache; added markdown link check (lychee).
