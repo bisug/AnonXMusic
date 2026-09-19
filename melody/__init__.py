@@ -3,10 +3,11 @@
 # This file is part of Melody
 
 
-import time
 import asyncio
 import logging
+import time
 import warnings
+from importlib.metadata import PackageNotFoundError, version
 from logging.handlers import RotatingFileHandler
 
 logging.basicConfig(
@@ -25,15 +26,33 @@ logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("pytgcalls").setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 
-# uvloop <=0.22.1 probes handlers with the deprecated asyncio.iscoroutinefunction
-# from its C layer, so Python 3.14 warns once per add_signal_handler() call and
-# blames our call site. Upstream master already uses
-# inspect.iscoroutinefunction; drop this filter once uvloop >0.22.1 is released.
-warnings.filterwarnings(
-    "ignore",
-    message=r"'asyncio\.iscoroutinefunction' is deprecated",
-    category=DeprecationWarning,
-)
+def _uvloop_needs_deprecation_filter(uvloop_version: str | None = None) -> bool:
+    """True while uvloop probes handlers with the deprecated asyncio helper.
+
+    uvloop <=0.22.1 checks signal handlers from its C layer with
+    asyncio.iscoroutinefunction, so Python 3.14 warns once per
+    add_signal_handler() call and blames our call site in melody/__main__.py.
+    Upstream master already uses inspect.iscoroutinefunction, so gating the
+    filter on the version retires it by itself once a fixed uvloop ships.
+    """
+    if uvloop_version is None:
+        try:
+            uvloop_version = version("uvloop")
+        except PackageNotFoundError:
+            return False  # not installed (e.g. win32): nothing to silence
+    # "0.22.1" -> (0, 22, 1); unparseable versions fail safe by warning.
+    numbers = tuple(int(part) for part in uvloop_version.split(".") if part.isdigit())
+    if not numbers:
+        return False
+    return numbers[:3] <= (0, 22, 1)
+
+
+if _uvloop_needs_deprecation_filter():
+    warnings.filterwarnings(
+        "ignore",
+        message=r"'asyncio\.iscoroutinefunction' is deprecated",
+        category=DeprecationWarning,
+    )
 
 
 __version__ = "3.0.3"
@@ -54,30 +73,38 @@ def is_shutting_down() -> bool:
     return _shutting_down
 
 from melody.core.bot import Bot
+
 app = Bot()
 
 from melody.core.dir import ensure_dirs
+
 ensure_dirs()
 
 from melody.core.userbot import Userbot
+
 userbot = Userbot()
 
 from melody.core.mongo import MongoDB
+
 db = MongoDB()
 
 from melody.core.lang import Language
+
 lang = Language()
 
 from melody.core.telegram import Telegram
 from melody.core.youtube import YouTube
+
 tg = Telegram()
 yt = YouTube()
 
 from melody.helpers import Queue, Thumbnail
+
 queue = Queue()
 thumb = Thumbnail()
 
 from melody.core.calls import TgCall
+
 anon = TgCall()
 
 

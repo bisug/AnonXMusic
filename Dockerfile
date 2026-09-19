@@ -39,12 +39,17 @@ FROM python:3.14-slim AS runtime
 # /ping degrades to "N/A" when the binary is absent or the arch is unsupported.
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
-    && curl -sL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz \
-        -o /tmp/ff.tar.xz \
-    && tar -xf /tmp/ff.tar.xz -C /tmp \
-        ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ffmpeg \
-        ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ffprobe \
-    && mv /tmp/ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ff* /usr/local/bin/ \
+    && FF_NAME=ffmpeg-n9.0-latest-linux64-gpl-9.0 \
+    && curl -sL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/${FF_NAME}.tar.xz" \
+        -o "/tmp/${FF_NAME}.tar.xz" \
+    && curl -sL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/checksums.sha256 \
+        -o /tmp/ff.sha256 \
+    # Verify against the release's own manifest before executing anything from it.
+    && (cd /tmp && grep -F "${FF_NAME}.tar.xz" ff.sha256 | sha256sum -c -) \
+    && tar -xf "/tmp/${FF_NAME}.tar.xz" -C /tmp \
+        "${FF_NAME}/bin/ffmpeg" \
+        "${FF_NAME}/bin/ffprobe" \
+    && mv "/tmp/${FF_NAME}/bin/ff"* /usr/local/bin/ \
     && ffmpeg -version | head -1 \
     && case "$(dpkg --print-architecture)" in \
         amd64) st_arch=x86_64 ;; \
@@ -65,7 +70,7 @@ RUN apt-get update -y \
     && apt-get purge -y curl xz-utils \
     && apt-get autoremove -y \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/ff.tar.xz /tmp/st.tgz /tmp/ffmpeg-n9.0-latest-linux64-gpl-9.0
+    && rm -rf /var/lib/apt/lists/* /tmp/ff.tar.xz /tmp/ff.sha256 /tmp/st.tgz /tmp/ffmpeg-n9.0-latest-linux64-gpl-9.0
 
 WORKDIR /app
 

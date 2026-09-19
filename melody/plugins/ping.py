@@ -10,11 +10,10 @@ import time
 from contextlib import suppress
 
 import psutil
-
 from pyrogram import filters, types
+
 from melody import anon, app, boot, config, db, lang, logger
 from melody.helpers import buttons
-
 
 # Ookla's official Speedtest CLI — a Go binary, not the old speedtest-cli package.
 # Its JSON is written to stdout, progress to stderr.
@@ -103,7 +102,24 @@ async def _ping(_, m: types.Message):
     db_latency_task = asyncio.create_task(_db_latency())
     calls_latency_task = asyncio.create_task(anon.ping())
 
-    get_time = lambda s: (lambda r: (f"{r[-1]}, " if r[-1][:-4] != "0" else "") + ":".join(reversed(r[:-1])))([f"{v}{u}" for v, u in zip([s%60, (s//60)%60, (s//3600)%24, s//86400], ["s", "m", "h", "days"])])
+    def get_time(seconds: int) -> str:
+        """Render seconds as "1days, 2:3:4" (days omitted at zero)."""
+        parts = [
+            f"{value}{unit}"
+            for value, unit in zip(
+                [
+                    seconds % 60,
+                    (seconds // 60) % 60,
+                    (seconds // 3600) % 24,
+                    seconds // 86400,
+                ],
+                ["s", "m", "h", "days"],
+            )
+        ]
+        return (f"{parts[-1]}, " if parts[-1][:-4] != "0" else "") + ":".join(
+            reversed(parts[:-1])
+        )
+
     uptime = get_time(int(time.time() - boot))
     latency = round((time.perf_counter() - start) * 1000, 2)
     network_speed, db_latency, calls_latency = await asyncio.gather(
