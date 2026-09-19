@@ -18,6 +18,9 @@ class MongoDB:
         self.db = self.mongo.Anon
 
         self.admin_list = {}
+        # Cache staleness timestamps; admins are re-fetched after ADMIN_TTL so
+        # demoted users don't keep VC control indefinitely.
+        self.admin_ts = {}
         self.active_calls = {}
         self.admin_play = set()
         self.blacklisted = []
@@ -76,14 +79,23 @@ class MongoDB:
     async def get_admins(self, chat_id: int, reload: bool = False) -> list[int]:
         from melody.helpers._admins import reload_admins
 
-        if chat_id not in self.admin_list or reload:
+        # Refresh once every 30 minutes: a stale cache lets demoted users keep
+        # control; a shorter TTL costs a Telegram API call per check window.
+        admin_ttl = 1800
+        stale = (
+            chat_id not in self.admin_list
+            or time() - self.admin_ts.get(chat_id, 0) > admin_ttl
+        )
+        if stale or reload:
             admins = await reload_admins(chat_id)
             # Keep the old cache on reload failure so a transient error
             # doesn't strip every admin's rights.
             if admins is not None:
                 self.admin_list[chat_id] = admins
+                self.admin_ts[chat_id] = time()
             elif chat_id not in self.admin_list:
                 self.admin_list[chat_id] = []
+                self.admin_ts[chat_id] = time()
         return self.admin_list[chat_id]
 
     async def get_loop(self, chat_id: int) -> int:

@@ -69,11 +69,19 @@ class YouTube:
     def _api_enabled(self) -> bool:
         return bool(config.API_URL and config.API_KEY)
 
+    @staticmethod
+    def _mtime(path: Path) -> float:
+        # File can be unlinked by eviction between glob() and stat().
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
+
     def _cached_download(self, video_id: str, video: bool) -> str | None:
         # Scan all extensions; yt-dlp may write mp4/webm/m4a/mkv.
         candidates = sorted(
             Path("downloads").glob(f"{video_id}.*"),
-            key=lambda p: p.stat().st_mtime,
+            key=self._mtime,
             reverse=True,
         )
         for path in candidates:

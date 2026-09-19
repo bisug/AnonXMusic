@@ -74,6 +74,71 @@ class UsableFileTest(unittest.TestCase):
             finally:
                 os.chdir(previous)
 
+    def test_mtime_tolerates_missing_file(self):
+        # Eviction can unlink between glob() and stat(); sorting must not raise.
+        self.assertEqual(self.yt._mtime(Path("/nonexistent/file.webm")), 0.0)
+
+
+class AdminCacheTTLTest(unittest.TestCase):
+    """Stale admin cache must expire instead of locking in old permissions."""
+
+    def setUp(self):
+        from melody.core.mongo import MongoDB
+
+        self.db = MongoDB.__new__(MongoDB)
+        self.db.admin_list = {}
+        self.db.admin_ts = {}
+        self.reloads = []
+
+        async def fake_reload(chat_id):
+            self.reloads.append(chat_id)
+            return [99]
+
+        import melody.helpers._admins as admins_mod
+
+        self._orig = admins_mod.reload_admins
+        admins_mod.reload_admins = fake_reload
+
+    def tearDown(self):
+        import melody.helpers._admins as admins_mod
+
+        admins_mod.reload_admins = self._orig
+
+    def run_coro(self, coro):
+        import asyncio
+
+        return asyncio.new_event_loop().run_until_complete(coro)
+
+    def test_reloads_after_ttl(self):
+        self.assertEqual(self.run_coro(self.db.get_admins(1)), [99])
+        # Fresh cache: no extra reload.
+        self.assertEqual(self.run_coro(self.db.get_admins(1)), [99])
+        self.assertEqual(len(self.reloads), 1)
+        # Expire the TTL: reload happens again, values refresh.
+        self.db.admin_ts[1] -= 1801
+        self.assertEqual(self.run_coro(self.db.get_admins(1)), [99])
+        self.assertEqual(len(self.reloads), 2)
+
+    def test_reload_failure_keeps_fresh_timestamp(self):
+        async def failing(chat_id):
+            return None
+
+        # Populate the cache first (setUp's fake_reload), then make reloads fail.
+        self.assertEqual(self.run_coro(self.db.get_admins(1)), [99])
+        import melody.helpers._admins as admins_mod
+
+        orig = admins_mod.reload_admins
+        admins_mod.reload_admins = failing
+        try:
+            ts = self.db.admin_ts[1]
+            # Failure path must keep the cache AND its timestamp, else every
+            # call refetches and stale entries never expire.
+            self.assertGreater(ts, 0)
+            self.assertEqual(self.run_coro(self.db.get_admins(1)), [99])
+            self.assertEqual(self.db.admin_ts[1], ts)
+        finally:
+            admins_mod.reload_admins = orig
+
 
 class LocaleFallbackTest(unittest.TestCase):
     def test_missing_keys_fall_back_to_english(self):
