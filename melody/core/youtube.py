@@ -140,10 +140,6 @@ class YouTube:
             except OSError as ex:
                 logger.warning("Failed to evict %s: %s", p, ex)
 
-    def _api_filename(self, video_id: str, video: bool) -> Path:
-        ext = "mp4" if video else "mp3"
-        return Path("downloads") / f"{video_id}.{ext}"
-
     async def _download_api(self, video_id: str, video: bool = False) -> str | None:
         """Try every configured download-API provider, in order.
 

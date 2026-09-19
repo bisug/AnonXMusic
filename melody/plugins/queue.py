@@ -5,7 +5,7 @@
 
 from pyrogram import filters, types
 
-from melody import anon, app, config, db, lang, queue, thumb
+from melody import app, config, db, lang, queue, thumb
 from melody.helpers import Track, buttons, can_manage_vc
 
 

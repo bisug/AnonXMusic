@@ -204,11 +204,6 @@ class MongoDB:
             self.chats.append(chat_id)
             await self.chatsdb.insert_one({"_id": chat_id})
 
-    async def rm_chat(self, chat_id: int) -> None:
-        if await self.is_chat(chat_id):
-            self.chats.remove(chat_id)
-            await self.chatsdb.delete_one({"_id": chat_id})
-
     async def get_chats(self) -> list:
         if not self.chats:
             self.chats.extend([chat["_id"] async for chat in self.chatsdb.find()])
@@ -330,11 +325,6 @@ class MongoDB:
         if not await self.is_user(user_id):
             self.users.append(user_id)
             await self.usersdb.insert_one({"_id": user_id})
-
-    async def rm_user(self, user_id: int) -> None:
-        if await self.is_user(user_id):
-            self.users.remove(user_id)
-            await self.usersdb.delete_one({"_id": user_id})
 
     async def get_users(self) -> list:
         if not self.users:

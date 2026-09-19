@@ -43,4 +43,4 @@ jobs:
     
     - name: Test Docker Build
       # Only build the image, don't push. This ensures the Dockerfile is always working.
-      run: docker build -t anonxmusic:test .
+      run: docker build -t melody:test .
