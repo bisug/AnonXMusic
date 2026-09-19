@@ -3,20 +3,31 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _int_env(name: str, default: int = 0) -> int:
+    """getenv + int() that names the offending variable on bad input."""
+    try:
+        return int(getenv(name, default))
+    except ValueError:
+        raise SystemExit(
+            f"Invalid value for {name}: {getenv(name)!r} (expected an integer)"
+        ) from None
+
+
 class Config:
     def __init__(self):
-        self.API_ID = int(getenv("API_ID", 0))
+        self.API_ID = _int_env("API_ID")
         self.API_HASH = getenv("API_HASH")
 
         self.BOT_TOKEN = getenv("BOT_TOKEN")
         self.MONGO_URL = getenv("MONGO_URL")
 
-        self.LOGGER_ID = int(getenv("LOGGER_ID", 0))
-        self.OWNER_ID = int(getenv("OWNER_ID", 0))
+        self.LOGGER_ID = _int_env("LOGGER_ID")
+        self.OWNER_ID = _int_env("OWNER_ID")
 
-        self.DURATION_LIMIT = int(getenv("DURATION_LIMIT", 60)) * 60
-        self.QUEUE_LIMIT = int(getenv("QUEUE_LIMIT", 20))
-        self.PLAYLIST_LIMIT = int(getenv("PLAYLIST_LIMIT", 20))
+        self.DURATION_LIMIT = _int_env("DURATION_LIMIT", 60) * 60
+        self.QUEUE_LIMIT = _int_env("QUEUE_LIMIT", 20)
+        self.PLAYLIST_LIMIT = _int_env("PLAYLIST_LIMIT", 20)
 
         self.SESSION1 = getenv("SESSION", None)
         self.SESSION2 = getenv("SESSION2", None)
@@ -29,6 +40,10 @@ class Config:
 
         self.AUTO_LEAVE: bool = getenv("AUTO_LEAVE", "False").lower() == "true"
         self.AUTO_END: bool = getenv("AUTO_END", "False").lower() == "true"
+        # Chat IDs the assistant never auto-leaves (space-separated).
+        self.AUTO_LEAVE_EXCLUDE = [
+            int(chat) for chat in getenv("AUTO_LEAVE_EXCLUDE", "").split() if chat
+        ]
     
         self.THUMB_GEN: bool = getenv("THUMB_GEN", "True").lower() == "true"
         self.VIDEO_PLAY: bool = getenv("VIDEO_PLAY", "True").lower() == "true"

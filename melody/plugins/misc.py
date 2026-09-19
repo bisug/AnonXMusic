@@ -40,7 +40,7 @@ async def auto_leave():
                                 enums.ChatType.GROUP, enums.ChatType.SUPERGROUP,
                             ]][-20:]
                 for chat in chats:
-                    if chat in [app.logger, -1001686672798, -1001549206010]:
+                    if chat in [app.logger, *config.AUTO_LEAVE_EXCLUDE]:
                         continue
                     if chat in db.active_calls:
                         continue
