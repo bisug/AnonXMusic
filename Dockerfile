@@ -33,6 +33,10 @@ FROM python:3.14-slim AS runtime
 # melody/core/calls.py are honored. pytgcalls strips unknown flags on older
 # builds, so the app stays compatible either way. Only ffmpeg + ffprobe are
 # extracted (ffplay alone is ~145MB and needs X libs the bot never uses).
+#
+# Ookla Speedtest CLI 1.2.0 (the latest release; the official Go binary, not
+# the abandoned speedtest-cli PyPI package) powers "/ping speed". Optional:
+# /ping degrades to "N/A" when the binary is absent or the arch is unsupported.
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
     && curl -sL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz \
@@ -42,11 +46,26 @@ RUN apt-get update -y \
         ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ffprobe \
     && mv /tmp/ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ff* /usr/local/bin/ \
     && ffmpeg -version | head -1 \
+    && case "$(dpkg --print-architecture)" in \
+        amd64) st_arch=x86_64 ;; \
+        arm64) st_arch=aarch64 ;; \
+        *) st_arch="" ;; \
+       esac \
+    && if [ -n "$st_arch" ]; then \
+        curl -sL "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-${st_arch}.tgz" \
+            -o /tmp/st.tgz \
+        && tar -xzf /tmp/st.tgz -C /tmp speedtest \
+        && mv /tmp/speedtest /usr/local/bin/speedtest \
+        && chmod +x /usr/local/bin/speedtest \
+        && speedtest --version; \
+       else \
+        echo "No Ookla Speedtest build for $(dpkg --print-architecture); /ping speed will report N/A"; \
+       fi \
     # Drop the fetch tools — the runtime never needs them.
     && apt-get purge -y curl xz-utils \
     && apt-get autoremove -y \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/ff.tar.xz /tmp/ffmpeg-n9.0-latest-linux64-gpl-9.0
+    && rm -rf /var/lib/apt/lists/* /tmp/ff.tar.xz /tmp/st.tgz /tmp/ffmpeg-n9.0-latest-linux64-gpl-9.0
 
 WORKDIR /app
 

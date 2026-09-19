@@ -42,6 +42,7 @@ Built with Python, Pyrogram, and Py-TgCalls, it’s optimized for reliability an
 
 - <a href="https://www.python.org">Python 3.14+</a> installed  
 - <a href="https://deno.com/">deno</a> & <a href="https://ffmpeg.org/">ffmpeg</a> installed on your system  
+- <a href="https://www.speedtest.net/apps/cli">Ookla Speedtest CLI</a> installed — <b>optional</b>, only used by <code>/ping speed</code>  
 - Required variables mentioned in <a href="https://github.com/bisug/Melody/blob/master/sample.env">sample.env</a>
 
 <details>

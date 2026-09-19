@@ -4,36 +4,81 @@
 
 
 import asyncio
+import json
+import shutil
 import time
+from contextlib import suppress
+
 import psutil
-import speedtest
 
 from pyrogram import filters, types
-from melody import app, anon, boot, config, db, lang, logger
+from melody import anon, app, boot, config, db, lang, logger
 from melody.helpers import buttons
 
 
-def _format_mbps(bits_per_second: float) -> str:
-    return f"{bits_per_second / 1_000_000:.2f} Mbps"
+# Ookla's official Speedtest CLI — a Go binary, not the old speedtest-cli package.
+# Its JSON is written to stdout, progress to stderr.
+_OOKLA_CMD = (
+    "speedtest",
+    "--accept-license",
+    "--accept-gdpr",
+    "--format=json",
+    "--progress=no",
+)
+# A full test takes 10-30s; cap it so a hung server can't stall /ping forever.
+_OOKLA_TIMEOUT = 90
 
 
-def _run_speedtest() -> str:
-    test = speedtest.Speedtest(secure=True)
-    test.get_best_server()
-    download = test.download()
-    upload = test.upload(pre_allocate=False)
-    return (
-        f"DL: {_format_mbps(download)} | "
-        f"UL: {_format_mbps(upload)} | "
-        f"Ping: {test.results.ping:.2f}ms"
+def _bandwidth_mbps(bytes_per_second: float) -> str:
+    """Ookla reports bandwidth in bytes/second; render it as Mbps."""
+    return f"{bytes_per_second * 8 / 1_000_000:.2f} Mbps"
+
+
+async def _run_speedtest() -> str:
+    if not shutil.which(_OOKLA_CMD[0]):
+        logger.debug("Ookla Speedtest CLI not found in PATH; skipping speed test.")
+        return "N/A"
+
+    proc = await asyncio.create_subprocess_exec(
+        *_OOKLA_CMD,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-
-
-async def _network_speed() -> str:
     try:
-        return await asyncio.to_thread(_run_speedtest)
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(), _OOKLA_TIMEOUT
+        )
+    except TimeoutError:
+        logger.warning("Speedtest timed out after %ss.", _OOKLA_TIMEOUT)
+        return "N/A"
     except Exception as ex:
-        logger.debug("Speedtest failed: %r", ex)
+        logger.warning("Speedtest failed: %r", ex)
+        return "N/A"
+    finally:
+        # Never leave the child running, whichever way we exit.
+        if proc.returncode is None:
+            with suppress(ProcessLookupError):
+                proc.kill()
+            with suppress(Exception):
+                await proc.wait()  # reap it, so no zombie or GC warning
+
+    if proc.returncode != 0:
+        logger.warning(
+            "Speedtest exited with %s: %s",
+            proc.returncode,
+            stderr.decode(errors="replace").strip(),
+        )
+        return "N/A"
+
+    try:
+        result = json.loads(stdout)
+        return (
+            f"DL: {_bandwidth_mbps(result['download']['bandwidth'])} | "
+            f"UL: {_bandwidth_mbps(result['upload']['bandwidth'])} | "
+            f"Ping: {result['ping']['latency']:.2f}ms"
+        )
+    except (ValueError, KeyError, TypeError) as ex:
+        logger.warning("Unexpected speedtest result: %r", ex)
         return "N/A"
 
 
@@ -54,7 +99,7 @@ async def _ping(_, m: types.Message):
     sent = await m.reply_text(m.lang["pinging"])
     # Speedtest takes 10-30s — run it only for /ping speed, not every ping.
     full = any(tok in ("-s", "speed", "full") for tok in m.command[1:])
-    network_speed_task = asyncio.create_task(_network_speed()) if full else None
+    network_speed_task = asyncio.create_task(_run_speedtest()) if full else None
     db_latency_task = asyncio.create_task(_db_latency())
     calls_latency_task = asyncio.create_task(anon.ping())
 

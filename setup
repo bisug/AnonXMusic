@@ -67,6 +67,33 @@ install_py() {
     fi
 }
 
+install_speedtest() {
+    if command -v speedtest &>/dev/null; then
+        pprint "Ookla Speedtest CLI already installed.\n\n" "cgreen"
+        return
+    fi
+
+    case "$(uname -m)" in
+        x86_64) st_arch="x86_64" ;;
+        aarch64|arm64) st_arch="aarch64" ;;
+        *)
+            pprint "No Ookla Speedtest build for $(uname -m); /ping speed will report N/A.\n\n" "cyellow"
+            return
+            ;;
+    esac
+
+    # Optional: only "/ping speed" needs it, so a failure is not fatal.
+    pprint "Installing Ookla Speedtest CLI... " "cyellow"
+    if curl -sL "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-${st_arch}.tgz" -o /tmp/ookla-speedtest.tgz \
+        && sudo tar -xzf /tmp/ookla-speedtest.tgz -C /usr/local/bin speedtest \
+        && sudo chmod +x /usr/local/bin/speedtest \
+        && rm -f /tmp/ookla-speedtest.tgz; then
+        pprint "Done.\n\n" "cgreen"
+    else
+        pprint "Failed (optional; /ping works without it).\n\n" "cred"
+    fi
+}
+
 save_env_vars() {
     pprint "\n\nProcessing your variables..." "cgreen"
     [ -f .env ] && rm .env
@@ -87,6 +114,7 @@ pprint "Welcome to the Melody Installation Setup\n\n" "cmagenta"
 update
 install_pkgs python3 python3-venv ffmpeg curl unzip
 install_uv || exit 1
+install_speedtest
 install_py
 
 pprint "\nMelody Installation Completed.\n" "cgreen"
