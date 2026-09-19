@@ -23,11 +23,18 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     UV_PYTHON_DOWNLOADS=never \
     uv sync --frozen --no-install-project --compile-bytecode \
         --python /usr/local/bin/python3.14 \
+    `# Drop import-time-only weight from the venv before it ships.` \
+    && find /app/.venv -name '__pycache__' -type d -prune -exec rm -rf {} + \
+    && rm -rf /app/.venv/lib/python3.14/site-packages/*.dist-info \
     && .venv/bin/python -c 'import sys; print("venv python:", sys.executable)' \
     && .venv/bin/python -c 'import pytgcalls, yt_dlp; print("deps import OK")'
 
 # ---- Stage 2: runtime — only what the bot needs to run ----
 FROM python:3.14-slim AS runtime
+
+# Non-root user first so later COPYs can set ownership directly (no chown -R
+# rewrite of the ~260MB venv layer at the end).
+RUN useradd --system --no-create-home appuser
 
 # Static ffmpeg 9.0 (BtbN GPL build) — newer than any Debian release ships,
 # so the reconnect_max_retries / reconnect_delay_total_max input flags in
@@ -73,24 +80,22 @@ RUN apt-get update -y \
     && apt-get purge -y curl xz-utils \
     && apt-get autoremove -y \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/ff.tar.xz /tmp/ff.sha256 /tmp/st.tgz /tmp/ffmpeg-n9.0-latest-linux64-gpl-9.0
+    && rm -rf /var/lib/apt/lists/* "/tmp/${FF_NAME}.tar.xz" "/tmp/${FF_NAME}" /tmp/ff.sha256 /tmp/st.tgz
 
 WORKDIR /app
 
 # venv from the deps stage; uv itself stays behind in stage 1.
-COPY --from=deps /app/.venv /app/.venv
+COPY --from=deps --chown=appuser:appuser /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
 # App code — last layer so code changes don't invalidate the deps layer.
-COPY melody ./melody
-COPY config.py ./
+COPY --chown=appuser:appuser melody ./melody
+COPY --chown=appuser:appuser config.py ./
 
-# Run as a non-root user; the bot only talks outbound to Telegram/Mongo.
-RUN useradd --system --no-create-home appuser \
-    && mkdir -p cache downloads melody/cookies \
-    && chown -R appuser:appuser /app
+# Runtime dirs owned by appuser at creation — no chown -R over the venv.
+RUN mkdir -p cache downloads melody/cookies && chown appuser:appuser cache downloads melody/cookies
 USER appuser
 
 # start runs `uv run python3 -m melody`; with the venv already on PATH and
