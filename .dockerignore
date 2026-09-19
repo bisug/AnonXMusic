@@ -23,8 +23,8 @@ venv/
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
-# Pins uv to 3.13 and makes it download a managed interpreter; the Dockerfile
-# pins the venv to the image's system 3.14 instead.
+# Kept out of the build context: uv then has no version hint and falls back to
+# the image's system 3.14, which the Dockerfile pins explicitly anyway.
 .python-version
 
 # --- VCS / CI / editors ---

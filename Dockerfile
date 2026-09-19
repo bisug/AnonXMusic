@@ -2,7 +2,7 @@
 
 # ---- Stage 1: deps — resolve and install Python dependencies with uv ----
 FROM python:3.14-slim AS deps
-COPY --from=ghcr.io/astral-sh/uv:0.12.9 /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
@@ -10,10 +10,10 @@ COPY pyproject.toml uv.lock ./
 # --compile-bytecode: import-time speedup, done once at build not first-run.
 # --mount=cache: uv's download cache persists across builds without
 # bloating the image layer.
-# --python /usr/local/bin/python3.14: pin to the system interpreter. Without
-# this, uv reads .python-version (3.13), finds no 3.13 in the image, and
-# downloads a managed CPython into /root/.local — the venv symlinks there,
-# and the runtime stage (which only copies /app/.venv) gets a broken python.
+# --python /usr/local/bin/python3.14: pin to the system interpreter. The image
+# and .python-version now agree on 3.14, but the pin stays: uv resolves it
+# without a managed download, and the venv keeps pointing at a path that also
+# exists in the runtime stage (which only copies /app/.venv).
 # UV_PYTHON_DOWNLOADS=never: belt & suspenders — never fetch a managed
 # interpreter, always use the image's system python.
 # Sanity check: the venv python must resolve INSIDE this stage, and the

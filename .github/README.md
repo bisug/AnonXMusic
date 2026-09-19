@@ -40,7 +40,7 @@ Built with Python, Pyrogram, and Py-TgCalls, it’s optimized for reliability an
 
 <h3>✔️ Prerequisites</h3>
 
-- <a href="https://www.python.org">Python 3.13+</a> installed  
+- <a href="https://www.python.org">Python 3.14+</a> installed  
 - <a href="https://deno.com/">deno</a> & <a href="https://ffmpeg.org/">ffmpeg</a> installed on your system  
 - Required variables mentioned in <a href="https://github.com/bisug/Melody/blob/master/sample.env">sample.env</a>
 
