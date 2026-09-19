@@ -1,256 +1,136 @@
+# Melody
+
 <div align="center">
+  <img src="https://raw.githubusercontent.com/bisug/Melody/master/.github/melody.jpg" width="480" alt="Melody logo">
 
-<h2>Melody</h2>
-
-<b>Telegram Group Calls Streaming Bot</b><br>
-Supports YouTube, Spotify, Resso, Apple Music, SoundCloud and M3U8 links.
-
-<a href="https://github.com/bisug/Melody/stargazers">
-    <img src="https://img.shields.io/github/stars/bisug/Melody?color=blueviolet&logo=github&logoColor=black&style=for-the-badge" alt="Stars"/>
-</a>
-<a href="https://github.com/bisug/Melody/network/members">
-    <img src="https://img.shields.io/github/forks/bisug/Melody?color=blueviolet&logo=github&logoColor=black&style=for-the-badge" alt="Forks"/>
-</a>
-<a href="https://github.com/bisug/Melody/blob/master/LICENSE">
-    <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License"/>
-</a>
-<a href="https://www.python.org/">
-    <img src="https://img.shields.io/badge/Written%20in-Python-blue?style=for-the-badge&logo=python" alt="Python"/>
-</a>
-<br>
-
-<img src="https://github.com/bisug/Melody/blob/master/.github/melody.jpg" width="720" height="auto">
-
-Melody lets you stream high-quality and low-latency audio and video playback into telegram group video chats.<br>
-Built with Python, Pyrogram, and Py-TgCalls, it’s optimized for reliability and easy deployment on Heroku, Render, VPS, or Docker.
+  <p>
+    <a href="https://github.com/bisug/Melody/stargazers"><img src="https://img.shields.io/github/stars/bisug/Melody?style=flat-square&logo=github" alt="Stars"></a>
+    <a href="https://github.com/bisug/Melody/network/members"><img src="https://img.shields.io/github/forks/bisug/Melody?style=flat-square&logo=github" alt="Forks"></a>
+    <a href="https://github.com/bisug/Melody/blob/master/LICENSE"><img src="https://img.shields.io/github/license/bisug/Melody?style=flat-square" alt="License"></a>
+    <a href="https://github.com/bisug/Melody/actions/workflows/ci.yml"><img src="https://github.com/bisug/Melody/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <img src="https://img.shields.io/badge/python-3.14%2B-blue?style=flat-square&logo=python&logoColor=white" alt="Python 3.14+">
+    <img src="https://img.shields.io/badge/version-3.0.3-blueviolet?style=flat-square" alt="Version 3.0.3">
+  </p>
 </div>
 
-<hr>
+Telegram group voice-chat streaming bot — play audio/video from YouTube (plus Spotify/Apple Music/SoundCloud/m3u8 metadata resolution) directly in Telegram group calls.
 
-<h2>🔥 Features</h2>
+Built with [Kurigram](https://github.com/KurimuzonAkuma/kurigram) (Pyrogram fork), [Py-TgCalls](https://github.com/pytgcalls/pytgcalls), `yt-dlp`, and MongoDB.
 
-- 🎧 Stream low-latency audio in real time to <b>Telegram group video chats</b>
-- 🌐 Supports multiple platforms like <b>YouTube, Spotify, Apple Music, SoundCloud</b>
-- ⚡ Advanced queue management with auto-play
-- ⚙️ Easy deployment — works on Local, VPS, Heroku, or Render
-- ❤️ Built with Python
-<hr>
+<p>
+  <a href="https://www.python.org/"><img src="https://skillicons.dev/icons?i=python" width="40" height="40" alt="Python"></a>
+  <a href="https://www.docker.com/"><img src="https://skillicons.dev/icons?i=docker" width="40" height="40" alt="Docker"></a>
+  <a href="https://www.mongodb.com/"><img src="https://skillicons.dev/icons?i=mongodb" width="40" height="40" alt="MongoDB"></a>
+  <a href="https://www.heroku.com/"><img src="https://skillicons.dev/icons?i=heroku" width="40" height="40" alt="Heroku"></a>
+  <a href="https://github.com/bisug/Melody/actions/workflows/ci.yml"><img src="https://skillicons.dev/icons?i=githubactions" width="40" height="40" alt="GitHub Actions"></a>
+  <a href="https://www.linux.org/"><img src="https://skillicons.dev/icons?i=linux" width="40" height="40" alt="Linux"></a>
+</p>
 
-<h2>☁️ Manual Deployment</h2>
+- Version: **3.0.3** · Python **3.14+** · License: MIT
+- Deploy: VPS / Docker Compose, Render (Docker worker), Heroku (container worker), or local
+- Support: [Updates channel](https://t.me/SuMelodyVibes) · [Support group](https://t.me/SuMelodyVibes)
 
-<h3>✔️ Prerequisites</h3>
+> [!NOTE]
+> The bot streams into **group voice/video chats** via assistant (userbot) accounts. It has no inbound HTTP server — it only makes outbound connections to Telegram, MongoDB, and download sources.
 
-- <a href="https://www.python.org">Python 3.14+</a> installed  
-- <a href="https://deno.com/">deno</a> & <a href="https://ffmpeg.org/">ffmpeg</a> installed on your system  
-- <a href="https://www.speedtest.net/apps/cli">Ookla Speedtest CLI</a> installed — <b>optional</b>, only used by <code>/ping speed</code>  
-- Required variables mentioned in <a href="https://github.com/bisug/Melody/blob/master/sample.env">sample.env</a>
+## Features
 
-<details>
-    <summary>
-        <h3>Local / VPS Setup</h3>
-    </summary>
+<p>
+  <img src="https://img.shields.io/badge/audio-streaming-blue?style=flat-square&logo=telegram&logoColor=white" alt="Audio streaming">
+  <img src="https://img.shields.io/badge/video-streaming-blueviolet?style=flat-square&logo=telegram&logoColor=white" alt="Video streaming">
+  <img src="https://img.shields.io/badge/youtube-red?style=flat-square&logo=youtube&logoColor=white" alt="YouTube">
+  <img src="https://img.shields.io/badge/spotify-green?style=flat-square&logo=spotify&logoColor=white" alt="Spotify">
+  <img src="https://img.shields.io/badge/soundcloud-orange?style=flat-square&logo=soundcloud&logoColor=white" alt="SoundCloud">
+  <img src="https://img.shields.io/badge/apple_music-black?style=flat-square&logo=applemusic&logoColor=white" alt="Apple Music">
+  <img src="https://img.shields.io/badge/mongodb-green?style=flat-square&logo=mongodb&logoColor=white" alt="MongoDB">
+  <img src="https://img.shields.io/badge/docker-blue?style=flat-square&logo=docker&logoColor=white" alt="Docker">
+</p>
 
 
-<h4>🐧 Linux/macOS</h4>
+- Audio + video streaming into group voice/video chats via assistant accounts (up to 3 sessions)
+- Sources: YouTube search/links/playlists, Spotify/Apple Music/SoundCloud metadata, m3u8, Telegram audio/video replies
+- Resilient downloads: `yt-dlp` first, then ShrutiBots → OneGrab → NexGen HTTP fallbacks, plus PO-token provider support
+- Queue: shuffle, clear, loop (1–10), seek/seekback, force-play, playlists with duration/queue caps
+- Per-chat language (13 locales), auth users, admin cache reload, sudo/blacklist controls, broadcast, stats, inline YouTube search
+- Generated thumbnails, play logging to `LOGGER_ID`, auto-leave/auto-end timers
+
+## Quickstart
 
 ```bash
 git clone https://github.com/bisug/Melody.git && cd Melody
-
-# Install uv
+cp sample.env .env   # fill in required values, see Configuration
 curl -Ls https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
-
-# Install dependencies
 uv sync --frozen
-
-# Rename and configure environment variables
-mv sample.env .env
-# Edit .env with your credentials
-
-# Start the bot
 uv run python3 -m melody
 ```
 
-<h4>🪟 Windows (PowerShell)</h4>
+Docker Compose (VPS):
 
 ```bash
-git clone https://github.com/bisug/Melody.git && cd Melody
-
-# Install uv
-irm https://astral.sh/uv/install.ps1 | iex
-
-# Install dependencies
-uv sync --frozen
-
-# Rename and configure environment variables
-mv sample.env .env
-# Edit .env with your credentials
-
-# Start the bot
-uv run python3 -m melody
-
-> ⭐ Same command works everywhere — Linux, macOS, Windows, Git Bash, WSL.
-```
-
-<h4>🐳 VPS with Docker Compose</h4>
-
-The included <code>docker-compose.yml</code> is the easiest way to run the bot on a VPS with automatic restarts.
-
-```bash
-git clone https://github.com/bisug/Melody.git && cd Melody
-
-# Configure environment variables
-cp sample.env .env
-# Edit .env with your credentials
-
-# Build and start in the background
+cp sample.env .env   # fill in values
 docker compose up -d --build
-
-# Follow logs
 docker compose logs -f
-
-# Stop the bot
-docker compose down
 ```
 
-</details>
+## Prerequisites
 
-<details>
-    <summary>
-        <h3>Deploy to Render</h3>
-    </summary>
+- Python 3.14+, [uv](https://docs.astral.sh/uv/), `ffmpeg` on PATH (Docker image bundles static ffmpeg 9.0 + ffprobe)
+- MongoDB URL, Telegram `API_ID`/`API_HASH`, bot token from @BotFather, one Pyrogram v2 string session from @StringFatherBot
+- Optional: [Ookla Speedtest CLI](https://www.speedtest.net/apps/cli) — only used by `/ping -s`; without it that field shows `N/A`
 
-> Click on the button below to deploy on Render<br>
-    <a href="https://render.com/deploy?repo=https://github.com/bisug/Melody.git">
-        <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render"/>
-    </a>
+## Documentation
 
-This repository includes a <code>render.yaml</code> Blueprint for Render. It deploys Melody as a Docker background worker because the bot runs continuously and does not expose an HTTP server.
+Full guides live in [`wiki/`](https://github.com/bisug/Melody/tree/master/wiki):
 
-To deploy from your fork instead:
+- [Installation](https://github.com/bisug/Melody/blob/master/wiki/Installation.md) · [Configuration](https://github.com/bisug/Melody/blob/master/wiki/Configuration.md) · [Commands](https://github.com/bisug/Melody/blob/master/wiki/Commands.md) · [Deployment](https://github.com/bisug/Melody/blob/master/wiki/Deployment.md) · [Playback pipeline](https://github.com/bisug/Melody/blob/master/wiki/Playback-Pipeline.md) · [Troubleshooting](https://github.com/bisug/Melody/blob/master/wiki/Troubleshooting.md) · [Development](https://github.com/bisug/Melody/blob/master/wiki/Development.md)
 
-1. Fork this repository.
-2. Open the <a href="https://dashboard.render.com/blueprints/new">Render Blueprint dashboard</a>.
-3. Connect your fork and select the branch that contains <code>render.yaml</code>.
-4. Fill in the required environment variables:
+## Usage
 
-```env
-API_ID=
-API_HASH=
-BOT_TOKEN=
-MONGO_URL=
-LOGGER_ID=
-OWNER_ID=
-SESSION=
-```
+1. Add the bot and its assistant(s) to your Telegram group.
+2. Promote the bot to admin with invite-users permission and start a voice/video chat.
+3. Play: `/play <song>`, video: `/vplay <song>`, then `/pause` `/resume` `/skip` `/queue` `/stop`.
+   Full list: [wiki/Commands.md](https://github.com/bisug/Melody/blob/master/wiki/Commands.md).
 
-Optional:
+## Configuration
 
-```env
-COOKIES_URL=
-```
+| Var | Required | Default | Description |
+|---|---|---|---|
+| `API_ID` `API_HASH` `BOT_TOKEN` `MONGO_URL` `LOGGER_ID` `OWNER_ID` `SESSION` | yes | — | See [wiki/Configuration.md](https://github.com/bisug/Melody/blob/master/wiki/Configuration.md) |
+| `SESSION2` `SESSION3` | no | — | Extra assistants |
+| `SUPPORT_CHANNEL` `SUPPORT_CHAT` | no | `https://t.me/SuMelodyVibes` | URL / @username / ID |
+| `DURATION_LIMIT` (min) `QUEUE_LIMIT` `PLAYLIST_LIMIT` | no | `60` `20` `20` | Playback caps |
+| `AUTO_LEAVE` `AUTO_END` `THUMB_GEN` `VIDEO_PLAY` | no | `False` `False` `True` `True` | Behaviour toggles |
+| `LANG_CODE` | no | `en` | Default locale (13 available, per-chat `/lang`) |
+| `API_URL`+`API_KEY` / `ONEGRAB_*` / `NEXGEN_*` | no | — | Download fallbacks (strongly recommended on VPS) |
+| `POT_BASE_URL` | no | — | PO-token provider for yt-dlp |
+| `COOKIES_URL` | no | — | Space-separated batbin.me Netscape-cookie URLs |
+| `DEFAULT_THUMB` `PING_IMG` `START_IMG` | no | bundled URLs | Image overrides |
 
-Use <code>COOKIES_URL</code> only if your deployment needs cookies for YouTube playback. It accepts one or more <code>batbin.me</code> URLs separated by spaces.
+> [!TIP]
+> `config.py` is the source of truth; `sample.env` shows the deploy-time shape.
 
-5. Deploy the Blueprint.
+## Deployment
 
-> Auto deploy is disabled in <code>render.yaml</code>. Trigger deploys manually from Render after pushing updates.
-> Render background workers require a paid worker instance. Use the Dockerfile included in this repo; no separate build or start command is needed.
-</details>
+<p>
+  <a href="https://dashboard.heroku.com/new?template=https://github.com/bisug/Melody.git"><img src="https://img.shields.io/badge/Deploy%20On%20Heroku-430098?style=for-the-badge&logo=heroku&logoColor=white" alt="Deploy on Heroku"></a>
+  <a href="https://render.com/deploy?repo=https://github.com/bisug/Melody.git"><img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" height="28"></a>
+  <a href="https://railway.com/deploy?repo=https://github.com/bisug/Melody"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="32"></a>
+</p>
 
-<details>
-    <summary>
-        <h3>Deploy to Heroku</h3>
-    </summary>
+- **Docker Compose (VPS):** `cp sample.env .env`, `docker compose up -d --build`. Details: [wiki/Deployment.md](https://github.com/bisug/Melody/blob/master/wiki/Deployment.md).
+- **Render:** Blueprint worker (`render.yaml`, manual deploys, paid instance).
+- **Heroku:** container-stack worker (`heroku.yml` + `app.json`), scale `worker=1`.
+- **Railway:** one-click deploy above (Dockerfile auto-detected); set required env vars when prompted.
+- **Assisted VPS setup:** run `./setup` (Debian/Ubuntu).
 
-> Click on the button below to deploy on Heroku<br>
-    <a href="https://dashboard.heroku.com/new?template=https://github.com/bisug/Melody.git">
-        <img src="https://img.shields.io/badge/Deploy%20On%20Heroku-black?style=for-the-badge&logo=heroku"/>
-    </a>
+## Support
 
-This repo ships a container-stack <code>heroku.yml</code> and <code>app.json</code>. The bot runs as a <code>worker</code> dyno (no web process), and <code>app.json</code> provisions one <code>basic</code> worker automatically on deploy.
+<p>
+  <a href="https://t.me/SuMelodyVibes"><img src="https://img.shields.io/badge/updates_channel-229ED9?style=flat-square&logo=telegram&logoColor=white" alt="Updates channel"></a>
+  <a href="https://t.me/SuMelodyVibes"><img src="https://img.shields.io/badge/support_group-229ED9?style=flat-square&logo=telegram&logoColor=white" alt="Support group"></a>
+  <a href="https://github.com/bisug/Melody/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License"></a>
+</p>
 
-> Heroku has no free tier — a paid <code>basic</code> (or higher) worker dyno is required. If the bot doesn't start, ensure the worker is scaled: `heroku ps:scale worker=1 -a <your-app>`.
-</details>
 
-<hr>
-
-<h2>⚙️ Configuration</h2>
-
-Edit <code>.env</code> (or set variables in your hosting environment):
-<details>
-    <summary>Here's an example of the .env file</summary>
-
-```env
-API_ID=123456
-API_HASH=abcdef1234567890
-BOT_TOKEN=123456:ABC-DEF
-OWNER_ID=123456789
-LOGGER_ID=-1001234567890
-MONGO_URL=mongodb+srv://
-SESSION=BQgfh...AA
-```
-
-> 📝 Check <a href="https://github.com/bisug/Melody/blob/master/config.py">config.py</a> for all available options.
-</details>
-
-<hr>
-
-<h2>🧐 Usage</h2>
-
-1. Add the bot to your Telegram group.  
-2. Promote it to <b>admin</b> with invite users permission.  
-3. Use commands in the chat to control playback:
-<details>
-    <summary>Commands overview</summary>
-    <pre>
-/play [song name or link] -> Play audio in the videochat
-/vplay [song name or link] -> Play video in the videochat
-/pause -> Pause playback
-/resume -> Resume playback
-/skip -> Skip to next track
-/stop -> Stop playback
-/seek -> Seeks the stream
-/queue -> Show queue
-    </pre>
-</details>
-
-<hr>
-
-<h2>❤️ Contributing</h2>
-
-Contributions are welcome!
-
-1. Fork the repository.  
-2. Create your branch: <code>git checkout -b feature/new</code>.  
-4. Commit changes: <code>git commit -m 'New feature'</code>.  
-5. Push: <code>git push origin feature/new</code>
-6. Open a Pull Request.
-
-<hr>
-
-<h2>🗒️ License</h2>
-
-This project is licensed under the <b>MIT License</b> — see <a href="https://github.com/bisug/Melody/blob/master/LICENSE">LICENSE</a> for details.
-
-<hr>
-
-<h2>🤞 Updates and support</h2>
-
-- <a href="https://t.me/SuMelodyVibes">Updates channel</a>
-- <a href="https://t.me/SuMelodyVibes">Support group</a>
-
-<hr>
-
-<h2>👀 Acknowledgements</h2>
-
-- Inspired by other open-source Telegram music bots.
-- Thanks to all the <a href="https://github.com/bisug/Melody/graphs/contributors">contributors</a>.
-
-<hr>
-
-<div align="center">
-
-⭐ Enjoying the tunes? <b>Star the repo</b> — feedback keeps the rhythm going!
-
-</div>
+- Updates: https://t.me/SuMelodyVibes · Support: https://t.me/SuMelodyVibes
+- License: MIT — see [LICENSE](https://github.com/bisug/Melody/blob/master/LICENSE).
