@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["master", "main"]
+    branches: ["master", "main", "dev"]
   pull_request:
     branches: ["master", "main"]
 
@@ -41,15 +41,10 @@ jobs:
         # Offline unit tests (no network, no Telegram/Mongo needed).
         run: uv run python -m unittest discover -s tests -v
 
-  markdown-links:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7.0.1
-
       - name: Check markdown links
         uses: lycheeverse/lychee-action@v2.9.0
         with:
-          args: --no-progress --exclude '^mailto:' '.github/README.md' 'wiki/*.md'
+          args: --no-progress --exclude '^mailto:' 'README.md' 'wiki/*.md'
 
   docker-build:
     runs-on: ubuntu-latest
