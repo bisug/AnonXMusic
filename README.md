@@ -51,6 +51,9 @@ Built with [Kurigram](https://github.com/KurimuzonAkuma/kurigram) (Pyrogram fork
 - Sources: YouTube search/links/playlists, Spotify/Apple Music/SoundCloud metadata, m3u8, Telegram audio/video replies
 - Resilient downloads: `yt-dlp` first, then ShrutiBots → OneGrab → NexGen HTTP fallbacks, plus PO-token provider support
 - Queue: shuffle, clear, loop (1–10), seek/seekback, force-play, playlists with duration/queue caps
+- **Autoplay** — when the queue ends, a related track keeps the VC alive until someone stops it (`/autoplay`)
+- **Channel play** — audio posted in the group's linked channel is played automatically (`/channelplay`)
+- **Rich now-playing UI** — thumbnail, progress bar and styled controls as a Telegram rich message, with classic-keyboard fallback (`RICH_UI`)
 - Per-chat language (13 locales), auth users, admin cache reload, sudo/blacklist controls, broadcast, stats, inline YouTube search
 - Generated thumbnails, play logging to `LOGGER_ID`, auto-leave/auto-end timers
 
@@ -82,7 +85,20 @@ docker compose logs -f
 
 Full guides live in [`wiki/`](https://github.com/bisug/Melody/tree/master/wiki):
 
-- [Installation](https://github.com/bisug/Melody/blob/master/wiki/Installation.md) · [Configuration](https://github.com/bisug/Melody/blob/master/wiki/Configuration.md) · [Commands](https://github.com/bisug/Melody/blob/master/wiki/Commands.md) · [Deployment](https://github.com/bisug/Melody/blob/master/wiki/Deployment.md) · [Playback pipeline](https://github.com/bisug/Melody/blob/master/wiki/Playback-Pipeline.md) · [Troubleshooting](https://github.com/bisug/Melody/blob/master/wiki/Troubleshooting.md) · [Development](https://github.com/bisug/Melody/blob/master/wiki/Development.md)
+- [Installation](https://github.com/bisug/Melody/blob/master/wiki/Installation.md) · [Configuration](https://github.com/bisug/Melody/blob/master/wiki/Configuration.md) · [Commands](https://github.com/bisug/Melody/blob/master/wiki/Commands.md) · [Deployment](https://github.com/bisug/Melody/blob/master/wiki/Deployment.md) · [Architecture](https://github.com/bisug/Melody/blob/master/wiki/Architecture.md) · [Playback pipeline](https://github.com/bisug/Melody/blob/master/wiki/Playback-Pipeline.md) · [Troubleshooting](https://github.com/bisug/Melody/blob/master/wiki/Troubleshooting.md) · [Development](https://github.com/bisug/Melody/blob/master/wiki/Development.md)
+
+## Architecture
+
+One Python process, three clients (bot + assistant userbots), one MongoDB. Everything is outbound — no inbound HTTP.
+
+![Melody architecture](docs/architecture.svg)
+
+- **`melody/plugins/`** — 24 handler modules (commands, callbacks, watchers), auto-discovered and imported at boot
+- **`melody/core/`** — `bot.py` (kurigram client), `calls.py` (TgCall playback loop), `youtube.py` (search + yt-dlp + cache), `providers.py` (HTTP fallbacks), `telegram.py` (TG media), `mongo.py` (state), `lang.py` (locales), `userbot.py` (assistants)
+- **`melody/helpers/`** — queue, play guards, SSRF checks, rich-message UI, inline keyboards, admin cache
+- Playback loop: `play_media` → stream → `StreamEnded` → `play_next` → **autoplay** keeps it going; the timer task updates the progress bar every 12 s
+
+Details: [wiki/Architecture.md](https://github.com/bisug/Melody/blob/master/wiki/Architecture.md).
 
 ## Usage
 
@@ -99,7 +115,8 @@ Full guides live in [`wiki/`](https://github.com/bisug/Melody/tree/master/wiki):
 | `SESSION2` `SESSION3` | no | — | Extra assistants |
 | `SUPPORT_CHANNEL` `SUPPORT_CHAT` | no | `https://t.me/SuMelodyVibes` | URL / @username / ID |
 | `DURATION_LIMIT` (min) `QUEUE_LIMIT` `PLAYLIST_LIMIT` | no | `60` `20` `20` | Playback caps |
-| `AUTO_LEAVE` `AUTO_END` `THUMB_GEN` `VIDEO_PLAY` | no | `False` `False` `True` `True` | Behaviour toggles |
+| `AUTO_LEAVE` `AUTO_END` `THUMB_GEN` `VIDEO_PLAY` `RICH_UI` | no | `False` `False` `True` `True` `True` | Behaviour toggles |
+| `AUTO_LEAVE_EXCLUDE` | no | — | Space-separated chat IDs the assistant never auto-leaves |
 | `LANG_CODE` | no | `en` | Default locale (13 available, per-chat `/lang`) |
 | `API_URL`+`API_KEY` / `ONEGRAB_*` / `NEXGEN_*` | no | — | Download fallbacks (strongly recommended on VPS) |
 | `POT_BASE_URL` | no | — | PO-token provider for yt-dlp |
@@ -128,9 +145,33 @@ Full guides live in [`wiki/`](https://github.com/bisug/Melody/tree/master/wiki):
 <p>
   <a href="https://t.me/SuMelodyVibes"><img src="https://img.shields.io/badge/updates_channel-229ED9?style=flat-square&logo=telegram&logoColor=white" alt="Updates channel"></a>
   <a href="https://t.me/SuMelodyVibes"><img src="https://img.shields.io/badge/support_group-229ED9?style=flat-square&logo=telegram&logoColor=white" alt="Support group"></a>
-  <a href="https://github.com/bisug/Melody/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License"></a>
+  <a href="https://github.com/bisug/Melody/issues"><img src="https://img.shields.io/badge/issues-181717?style=flat-square&logo=github&logoColor=white" alt="Issues"></a>
 </p>
 
+## Credits
 
-- Updates: https://t.me/SuMelodyVibes · Support: https://t.me/SuMelodyVibes
-- License: MIT — see [LICENSE](https://github.com/bisug/Melody/blob/master/LICENSE).
+Melody is open source and stands on the shoulders of a large community of Telegram music-bot projects. Thank you to everyone below.
+
+**Upstream lineage**
+
+- [AnonymousX1025/AnonXMusic](https://github.com/AnonymousX1025/AnonXMusic) — the codebase Melody is built on (MIT). The `LICENSE` notice is retained accordingly.
+- [NoxxOP/ShrutixMusic](https://github.com/NoxxOP/ShrutixMusic) — MIT-licensed project in the same family; Melody's autoplay, channel play, and rich now-playing UI were written from scratch for Melody but are feature-parity inspired by it.
+
+**Libraries & tools**
+
+| Project | Role |
+|---|---|
+| [kurigram](https://github.com/KurimuzonAkuma/kurigram) | Pyrogram fork — MTProto bot + userbot clients, rich messages |
+| [pytgcalls / ntgcalls](https://github.com/pytgcalls/pytgcalls) | Group-call streaming |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Media extraction and downloads |
+| [py-yt-search](https://pypi.org/project/py-yt-search/) | YouTube search without an API key |
+| [pymongo](https://github.com/mongodb/mongo-python-driver) | Async MongoDB driver |
+| [aiohttp](https://github.com/aio-libs/aiohttp), [uvloop](https://github.com/MagicStack/uvloop), [Pillow](https://github.com/python-pillow/Pillow), [psutil](https://github.com/giampaolo/psutil), [python-dotenv](https://github.com/theskumar/python-dotenv) | Runtime essentials |
+| [FFmpeg](https://ffmpeg.org) | Audio/video demuxing and streaming |
+| [bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider) | YouTube PO tokens |
+
+Inter typeface — SIL Open Font License (`OFL_Inter.txt`); Raleway — SIL Open Font License (`OFL_Raleway.txt`).
+
+## License
+
+MIT — see [LICENSE](https://github.com/bisug/Melody/blob/master/LICENSE). The original upstream copyright notice (AnonymousX1025) is preserved as required by the license; the autoplay, channel-play, and rich-UI features are original to Melody.

@@ -22,6 +22,8 @@ Source of truth: `config.py`. Copy `sample.env` → `.env`; on hosts set real en
 | `QUEUE_LIMIT` | `20` | Max queued tracks per chat |
 | `PLAYLIST_LIMIT` | `20` | Max playlist tracks expanded per request |
 | `AUTO_LEAVE` | `False` | Assistant leaves VC when idle |
+| `AUTO_LEAVE_EXCLUDE` | — | Space-separated chat IDs the assistant never auto-leaves |
+| `RICH_UI` | `True` | Rich now-playing panel (photo, progress bar, styled buttons); `False` = classic text + inline keyboard. Falls back automatically when the chat disallows photos |
 | `AUTO_END` | `False` | End stream when idle timer expires |
 | `THUMB_GEN` | `True` | Generate cover thumbnails |
 | `VIDEO_PLAY` | `True` | Allow `/vplay` video streams |

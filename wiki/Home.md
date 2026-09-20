@@ -8,6 +8,7 @@ Start here:
 - [[Configuration]] — every env var, required vs optional
 - [[Commands]] — full command reference
 - [[Deployment]] — Render, Heroku, VPS notes
-- [[Playback-Pipeline]] — how yt-dlp → ShrutiBots → OneGrab → NexGen fallbacks work
+- [[Architecture]] — module map and playback flow diagram
+- [[Playback-Pipeline]] — how yt-dlp → ShrutiBots → OneGrab → NexGen fallbacks work, plus autoplay and the rich panel
 - [[Troubleshooting]] — YouTube bot-checks, cookies, PO tokens, common errors
 - [[Development]] — tests, lint, project layout

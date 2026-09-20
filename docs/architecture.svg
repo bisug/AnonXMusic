@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 800" font-family="Segoe UI, Ubuntu, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b949e"/>
+    </marker>
+    <style>
+      .c { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 10; }
+      .ct { fill: #e6edf3; font-size: 14px; font-weight: 700; letter-spacing: .5px; }
+      .m { fill: #0d1117; stroke-width: 1.4; rx: 7; }
+      .mt { fill: #e6edf3; font-size: 13px; font-weight: 700; }
+      .ms { fill: #8b949e; font-size: 11px; }
+      .lbl { fill: #8b949e; font-size: 11px; }
+      .flow { stroke: #8b949e; stroke-width: 1.6; fill: none; marker-end: url(#arr); }
+      .flow2 { stroke: #6e7681; stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; marker-end: url(#arr); }
+    </style>
+  </defs>
+
+  <rect width="1180" height="800" fill="#0d1117"/>
+  <text x="30" y="42" fill="#e6edf3" font-size="24" font-weight="700">Melody — architecture</text>
+  <text x="30" y="66" fill="#8b949e" font-size="13">Telegram voice-chat music bot · Python 3.14 · kurigram (Pyrogram) · Py-TgCalls · yt-dlp · MongoDB</text>
+
+  <!-- ============ LEFT: Telegram ============ -->
+  <rect x="30" y="90" width="250" height="630" class="c"/>
+  <text x="46" y="115" class="ct" fill="#f778ba">TELEGRAM</text>
+
+  <rect x="50" y="140" width="210" height="70" class="m" stroke="#f778ba"/>
+  <text x="155" y="168" text-anchor="middle" class="mt">Group / supergroup</text>
+  <text x="155" y="186" text-anchor="middle" class="ms">voice · video chat (VC)</text>
+
+  <rect x="50" y="255" width="210" height="64" class="m" stroke="#f778ba"/>
+  <text x="155" y="280" text-anchor="middle" class="mt">Bot account</text>
+  <text x="155" y="298" text-anchor="middle" class="ms">commands · callbacks · inline</text>
+
+  <rect x="50" y="380" width="210" height="86" class="m" stroke="#f778ba"/>
+  <text x="155" y="406" text-anchor="middle" class="mt">Assistant userbot(s)</text>
+  <text x="155" y="424" text-anchor="middle" class="ms">up to 3 string sessions</text>
+  <text x="155" y="440" text-anchor="middle" class="ms">joins the call, streams audio</text>
+
+  <rect x="50" y="500" width="210" height="86" class="m" stroke="#f778ba"/>
+  <text x="155" y="526" text-anchor="middle" class="mt">Now-playing message</text>
+  <text x="155" y="544" text-anchor="middle" class="ms">rich panel: thumb · title</text>
+  <text x="155" y="560" text-anchor="middle" class="ms">progress bar · control buttons</text>
+  <text x="155" y="576" text-anchor="middle" class="ms">(classic keyboard fallback)</text>
+
+  <rect x="50" y="625" width="210" height="66" class="m" stroke="#f778ba"/>
+  <text x="155" y="650" text-anchor="middle" class="mt">Users &amp; admins</text>
+  <text x="155" y="668" text-anchor="middle" class="ms">auth list · sudoers · blacklist</text>
+
+  <!-- ============ MIDDLE: melody core ============ -->
+  <rect x="330" y="90" width="440" height="630" class="c"/>
+  <text x="346" y="115" class="ct" fill="#a371f7">MELODY /  (PYTHON PACKAGE)</text>
+
+  <rect x="350" y="140" width="410" height="58" class="m" stroke="#a371f7"/>
+  <text x="365" y="164" class="mt">plugins/ — 24 handler modules</text>
+  <text x="365" y="182" class="ms">play · queue · callbacks · autoplay · channelplay · language · stats …</text>
+
+  <rect x="350" y="212" width="410" height="58" class="m" stroke="#58a6ff"/>
+  <text x="365" y="236" class="mt">core/bot.py</text>
+  <text x="365" y="254" class="ms">kurigram client · filters · boot · graceful shutdown</text>
+
+  <rect x="350" y="284" width="410" height="76" class="m" stroke="#3fb950"/>
+  <text x="365" y="308" class="mt">core/calls.py — TgCall playback loop</text>
+  <text x="365" y="326" class="ms">play_media → stream → StreamEnded → play_next</text>
+  <text x="365" y="342" class="ms">loop counter · seek/replay · autoplay hook · prefetch</text>
+  <text x="365" y="356" class="ms">stop/leave on VC close · rich panel edits</text>
+
+  <!-- ============ RIGHT: external services ============ -->
+  <rect x="820" y="90" width="330" height="630" class="c"/>
+  <text x="836" y="115" class="ct" fill="#f0883e">EXTERNAL SERVICES</text>
+
+  <rect x="840" y="140" width="290" height="86" class="m" stroke="#f0883e"/>
+  <text x="985" y="166" text-anchor="middle" class="mt">YouTube</text>
+  <text x="985" y="184" text-anchor="middle" class="ms">search · watch pages · live streams</text>
+  <text x="985" y="200" text-anchor="middle" class="ms">SABR / PO-token aware extraction</text>
+
+  <rect x="840" y="255" width="290" height="86" class="m" stroke="#f0883e"/>
+  <text x="985" y="281" text-anchor="middle" class="mt">Download fallback APIs</text>
+  <text x="985" y="299" text-anchor="middle" class="ms">ShrutiBots · OneGrab · NexGen</text>
+  <text x="985" y="315" text-anchor="middle" class="ms">used when yt-dlp fails (VPS IPs)</text>
+
+  <rect x="840" y="370" width="290" height="66" class="m" stroke="#f0883e"/>
+  <text x="985" y="394" text-anchor="middle" class="mt">bgutil PO-token provider</text>
+  <text x="985" y="412" text-anchor="middle" class="ms">optional proof-of-origin server</text>
+
+  <rect x="840" y="465" width="290" height="70" class="m" stroke="#3fb950"/>
+  <text x="985" y="490" text-anchor="middle" class="mt">MongoDB</text>
+  <text x="985" y="508" text-anchor="middle" class="ms">users · chats · settings · sudo</text>
+  <text x="985" y="524" text-anchor="middle" class="ms">blacklist · assistant slots · logger</text>
+
+  <rect x="840" y="565" width="290" height="66" class="m" stroke="#d29922"/>
+  <text x="985" y="589" text-anchor="middle" class="mt">downloads/ + cache/</text>
+  <text x="985" y="607" text-anchor="middle" class="ms">local audio/video files (LRU-evicted,</text>
+  <text x="985" y="623" text-anchor="middle" class="ms">4 GB cap) · .part guarded</text>
+
+  <rect x="840" y="660" width="290" height="50" class="m" stroke="#8b949e"/>
+  <text x="985" y="682" text-anchor="middle" class="mt">ntgcalls / ffmpeg</text>
+  <text x="985" y="700" text-anchor="middle" class="ms">media pipeline under Py-TgCalls</text>
+
+  <rect x="350" y="374" width="410" height="58" class="m" stroke="#58a6ff"/>
+  <text x="365" y="398" class="mt">core/youtube.py</text>
+  <text x="365" y="416" class="ms">search (py_yt) · related() for autoplay · yt-dlp download · cache LRU</text>
+
+  <rect x="350" y="446" width="410" height="52" class="m" stroke="#58a6ff"/>
+  <text x="365" y="468" class="mt">core/providers.py</text>
+  <text x="365" y="486" class="ms">HTTP fallbacks: ShrutiBots → OneGrab → NexGen</text>
+
+  <rect x="350" y="512" width="410" height="52" class="m" stroke="#58a6ff"/>
+  <text x="365" y="534" class="mt">core/telegram.py</text>
+  <text x="365" y="552" class="ms">TG media downloads (200 MB cap) · m3u8 · cancel events</text>
+
+  <rect x="350" y="578" width="410" height="52" class="m" stroke="#d29922"/>
+  <text x="365" y="600" class="mt">helpers/</text>
+  <text x="365" y="618" class="ms">_queue · _play (SSRF guard, join) · _rich (UI) · _inline · _admins · _utilities</text>
+
+  <rect x="350" y="644" width="410" height="58" class="m" stroke="#3fb950"/>
+  <text x="365" y="668" class="mt">core/mongo.py + core/lang.py + thumb</text>
+  <text x="365" y="686" class="ms">chat state (autoplay, channel play, modes) · 14 locales · thumbnail gen</text>
+
+  <!-- ============ flows ============ -->
+  <path d="M155,380 L155,214" class="flow"/>
+  <text x="163" y="300" class="lbl">opus/h264 stream</text>
+
+  <path d="M260,280 L305,280 L305,169 L346,169" class="flow"/>
+  <text x="268" y="272" class="lbl">/play …</text>
+
+  <path d="M555,270 L555,280" class="flow"/>
+
+  <path d="M555,360 L555,370" class="flow"/>
+
+  <path d="M760,403 L800,403 L800,196 L836,196" class="flow"/>
+  <text x="768" y="394" class="lbl">search / extract</text>
+
+  <path d="M760,472 L800,472 L800,311 L836,311" class="flow"/>
+  <text x="766" y="463" class="lbl">fallback</text>
+
+  <path d="M760,538 L800,538 L800,611 L836,611" class="flow"/>
+  <text x="762" y="528" class="lbl">save file</text>
+
+  <path d="M840,598 L812,598 L812,335 L764,322" class="flow2"/>
+  <text x="816" y="588" class="lbl">file path</text>
+
+  <path d="M350,322 L320,322 L320,423 L264,423" class="flow"/>
+  <text x="196" y="478" class="lbl">MediaStream</text>
+
+  <path d="M264,155 C300,155 316,250 346,296" class="flow2"/>
+  <text x="258" y="124" class="lbl">StreamEnded → play_next → autoplay</text>
+
+  <path d="M350,604 L320,604 L320,543 L264,543" class="flow"/>
+  <text x="280" y="624" class="lbl">panel updates</text>
+
+  <path d="M760,673 L800,673 L800,513 L836,513" class="flow"/>
+  <text x="762" y="664" class="lbl">state</text>
+
+  <!-- footer -->
+  <text x="330" y="754" fill="#8b949e" font-size="12">Runtime: asyncio + uvloop · background tasks: track_time · update_timer · vc_watcher · auto_leave · graceful shutdown with 60 s deadline</text>
+  <text x="330" y="774" fill="#8b949e" font-size="12">All connections are outbound — Telegram MTProto (bot + assistants), MongoDB, and media sources. No inbound HTTP server.</text>
+</svg>

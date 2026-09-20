@@ -23,5 +23,10 @@ All notable changes to Melody. Format based on Keep a Changelog; versions follow
 - Removed dead code (`MessageIdInvalid` import, unused `api_warned` flag, empty `Utilities.__init__`, one-line `idle()` wrapper) and hoisted `plugins/queue.py`'s function-local `random` import to module scope.
 
 ### Added
+
+- Autoplay (`/autoplay [on|off]`, settings toggle): when the queue ends, a random related track keeps playing; related search excludes the current track, live entries and over-limit tracks.
+- Channel play (`/channelplay [on|off]`): audio posted in the group's linked channel is queued/played automatically; assistant-join logic extracted into a shared `join_assistant()`.
+- Rich now-playing UI (kurigram rich messages): photo, title, progress-bar row and styled Pause/Resume · Replay · Skip · Stop controls, reusing the existing `controls` callbacks; timer re-renders progress; automatic fallback to the classic text + inline-keyboard UI; `RICH_UI` env toggle.
+- `/settings` gained an Autoplay row; wiki architecture page + SVG diagram; credits section in the README.
 - Queue unit tests locking add/current/next/force_add/clear semantics.
 - README with SVG badges, wiki pages, one-click deploy buttons (Heroku/Render/Railway).

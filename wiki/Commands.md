@@ -16,6 +16,8 @@ Legend: **G** = group only, **P** = private, **A** = needs admin/auth, **S** = s
 | `/loop [<n>\|off]` | A | Repeat current track 1–10 times; no arg shows status |
 | `/shuffle` | A | Shuffle upcoming queue (current keeps playing) |
 | `/clear` | A | Drop upcoming queue (current keeps playing) |
+| `/autoplay [on\|off]` | A | When the queue ends, keep playing related tracks; no arg shows status |
+| `/channelplay [on\|off]` | A | Play audio posted in the group's linked channel; requires a channel linked in group settings |
 | `/queue`, `/playing` | anyone | Show now-playing + queue |
 | `/stats` | anyone | Call stats for this chat |
 
