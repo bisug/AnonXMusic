@@ -4,11 +4,17 @@
 
 
 import re
+import time
 
 from pyrogram import errors, filters, types
 
 from melody import anon, app, db, lang, logger, queue, tg, yt
 from melody.helpers import admin_check, buttons, can_manage_vc
+from melody.helpers import _rich
+
+
+def _played_str(media):
+    return time.strftime("%M:%S", time.gmtime(min(media.time, media.duration_sec)))
 
 
 async def _edit_help_message(query: types.CallbackQuery, text: str, reply_markup):
@@ -56,6 +62,9 @@ async def _controls(_, query: types.CallbackQuery):
             return
 
     if action == "status":
+        media = queue.get_current(chat_id)
+        if media and media.duration_sec and media.time:
+            return await query.answer(f"{_played_str(media)} / {media.duration}")
         return await query.answer()
     await query.answer(query.lang["processing"], show_alert=True)
 
@@ -65,6 +74,9 @@ async def _controls(_, query: types.CallbackQuery):
                 query.lang["play_already_paused"], show_alert=True
             )
         await anon.pause(chat_id)
+        if not qaction and getattr(query.message, "rich_message", None) is not None:
+            await _rich.refresh_np(chat_id, playing=False, message=query.message)
+            return await query.answer(query.lang["paused"])
         if qaction:
             return await query.edit_message_reply_markup(
                 reply_markup=buttons.queue_markup(chat_id, query.lang["paused"], False)
@@ -76,6 +88,9 @@ async def _controls(_, query: types.CallbackQuery):
         if await db.playing(chat_id):
             return await query.answer(query.lang["play_not_paused"], show_alert=True)
         await anon.resume(chat_id)
+        if not qaction and getattr(query.message, "rich_message", None) is not None:
+            await _rich.refresh_np(chat_id, playing=True, message=query.message)
+            return await query.answer(query.lang["playing"])
         if qaction:
             return await query.edit_message_reply_markup(
                 reply_markup=buttons.queue_markup(chat_id, query.lang["playing"], True)

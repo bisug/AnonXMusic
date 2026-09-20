@@ -19,6 +19,7 @@ class Media:
     user: str = None
     video: bool = False
     is_live: bool = False
+    rich_ui: bool = False
 
 
 @dataclass
@@ -37,3 +38,4 @@ class Track:
     view_count: str = None
     video: bool = False
     is_live: bool = False
+    rich_ui: bool = False

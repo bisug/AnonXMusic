@@ -17,6 +17,7 @@ from melody import (app, config, db, lang, logger,
                    queue, thumb, userbot, yt)
 from melody import is_shutting_down
 from melody.helpers import Media, Track, buttons
+from melody.helpers import _rich
 
 
 class TgCall(PyTgCalls):
@@ -175,32 +176,39 @@ class TgCall(PyTgCalls):
                     media.user,
                 )
                 keyboard = buttons.controls(chat_id)
-                try:
-                    if _thumb:
-                        await message.edit_media(
-                            media=InputMediaPhoto(
-                                media=_thumb,
+                media.rich_ui = False
+                if await _rich.edit_placeholder(
+                    message, chat_id, media, _lang, thumb=_thumb
+                ):
+                    media.rich_ui = True
+                    media.message_id = message.id
+                else:
+                    try:
+                        if _thumb:
+                            await message.edit_media(
+                                media=InputMediaPhoto(
+                                    media=_thumb,
+                                    caption=text,
+                                ),
+                                reply_markup=keyboard,
+                            )
+                        else:
+                            await message.edit_text(text, reply_markup=keyboard)
+                    except Exception:
+                        if _thumb:
+                            sent = await app.send_photo(
+                                chat_id=chat_id,
+                                photo=_thumb,
                                 caption=text,
-                            ),
-                            reply_markup=keyboard,
-                        )
-                    else:
-                        await message.edit_text(text, reply_markup=keyboard)
-                except Exception:
-                    if _thumb:
-                        sent = await app.send_photo(
-                            chat_id=chat_id,
-                            photo=_thumb,
-                            caption=text,
-                            reply_markup=keyboard,
-                        )
-                    else:
-                        sent = await app.send_message(
-                            chat_id=chat_id,
-                            text=text,
-                            reply_markup=keyboard,
-                        )
-                    media.message_id = sent.id
+                                reply_markup=keyboard,
+                            )
+                        else:
+                            sent = await app.send_message(
+                                chat_id=chat_id,
+                                text=text,
+                                reply_markup=keyboard,
+                            )
+                        media.message_id = sent.id
         except FileNotFoundError:
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
             await self.play_next(chat_id)

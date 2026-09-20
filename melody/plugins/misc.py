@@ -11,6 +11,7 @@ from pyrogram import enums, errors, filters, types
 
 from melody import anon, app, config, db, lang, logger, queue, tasks, userbot, yt
 from melody.helpers import buttons
+from melody.helpers import _rich
 
 
 @app.on_message(filters.video_chat_started, group=19)
@@ -86,11 +87,8 @@ async def update_timer(length=10, sleep=12):
                 # Live has no progress bar or end prefetch; runs until skipped.
                 if not duration or not message_id or not media.time:
                     continue
-                remove = False
                 played = media.time
                 remaining = max(duration - played, 0)
-                pos = min(int((played / duration) * length), length - 1)
-                timer = "—" * pos + "◉" + "—" * (length - pos - 1)
 
                 if remaining <= 30:
                     next = queue.get_next(chat_id, check=True)
@@ -104,8 +102,14 @@ async def update_timer(length=10, sleep=12):
                             yt.download(next.id, video=next.video, prefetch=True)
                         )
 
-                if remaining < 10:
-                    remove = True
+                if media.rich_ui:
+                    # Rich panel carries the progress row; rebuild it.
+                    await _rich.refresh_np(chat_id)
+                    continue
+
+                remove = False
+                pos = min(int((played / duration) * length), length - 1)
+                timer = "—" * pos + "◉" + "—" * (length - pos - 1)
 
                 timer = f"{time.strftime('%M:%S', time.gmtime(played))} | {timer} | -{time.strftime('%M:%S', time.gmtime(remaining))}"
 

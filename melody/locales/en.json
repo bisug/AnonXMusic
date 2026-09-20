@@ -171,5 +171,11 @@
     "channel_play_on": "▶️ Channel play enabled. Audio posted in <b>{0}</b> will now be played here.",
     "channel_play_off": "⏹ Channel play disabled.",
     "channel_play_usage": "<b>Usage:</b>\n\n/channelplay [on|off]",
-    "channel_no_linked": "No channel is linked to this group. Link a channel in your group settings first."
+    "channel_no_linked": "No channel is linked to this group. Link a channel in your group settings first.",
+    "rich_pause": "⏸ Pause",
+    "rich_resume": "▶️ Resume",
+    "rich_replay": "🔁 Replay",
+    "rich_skip": "⏭ Skip",
+    "rich_stop": "⏹ Stop",
+    "rich_requested": "Requested by {0}"
 }
