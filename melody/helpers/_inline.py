@@ -199,7 +199,7 @@ class Inline:
 
     def settings_markup(
         self, lang: dict, admin_only: bool, cmd_delete: bool, language: str, chat_id: int,
-        no_thumbnail: bool = False,
+        no_thumbnail: bool = False, autoplay: bool = False,
     ) -> types.InlineKeyboardMarkup:
         return self.ikm(
             [
@@ -213,6 +213,18 @@ class Inline:
                         text=admin_only,
                         category="enabled" if admin_only else "disabled",
                         callback_data="settings play",
+                    ),
+                ],
+                [
+                    self._button(
+                        text=lang["autoplay"] + " ➜",
+                        category="setting",
+                        callback_data="settings",
+                    ),
+                    self._button(
+                        text=autoplay,
+                        category="enabled" if autoplay else "disabled",
+                        callback_data="settings autoplay",
                     ),
                 ],
                 [

@@ -23,6 +23,9 @@ class MongoDB:
         self.admin_ts = {}
         self.active_calls = {}
         self.admin_play = set()
+        self.autoplay = set()
+        # chat_id -> linked channel_id (None when channel play is off)
+        self.channel_play = {}
         self.blacklisted = []
         self.cmd_delete = set()
         self.thumbnail_enabled = set()
@@ -305,6 +308,44 @@ class MongoDB:
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"admin_play": not remove}},
+            upsert=True,
+        )
+
+    # AUTOPLAY METHODS
+    async def get_autoplay(self, chat_id: int) -> bool:
+        if chat_id not in self.autoplay:
+            doc = await self.chatsdb.find_one({"_id": chat_id})
+            if doc and doc.get("autoplay"):
+                self.autoplay.add(chat_id)
+        return chat_id in self.autoplay
+
+    async def set_autoplay(self, chat_id: int, enable: bool = False) -> None:
+        if enable:
+            self.autoplay.add(chat_id)
+        else:
+            self.autoplay.discard(chat_id)
+        await self.chatsdb.update_one(
+            {"_id": chat_id},
+            {"$set": {"autoplay": enable}},
+            upsert=True,
+        )
+
+    # CHANNEL PLAY METHODS
+    async def get_channel_play(self, chat_id: int) -> int | None:
+        """Linked channel ID when channel play is enabled, else None."""
+        if chat_id not in self.channel_play:
+            doc = await self.chatsdb.find_one({"_id": chat_id})
+            self.channel_play[chat_id] = doc.get("channel_play") if doc else None
+        return self.channel_play[chat_id]
+
+    async def set_channel_play(self, chat_id: int, channel_id: int | None) -> None:
+        if channel_id:
+            self.channel_play[chat_id] = channel_id
+        else:
+            self.channel_play.pop(chat_id, None)
+        await self.chatsdb.update_one(
+            {"_id": chat_id},
+            {"$set": {"channel_play": channel_id or None}},
             upsert=True,
         )
 

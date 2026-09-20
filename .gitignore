@@ -33,3 +33,6 @@ venv/
 .DS_Store
 Thumbs.db
 .deno/
+
+# --- Tests ---
+tests/

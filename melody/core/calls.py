@@ -252,8 +252,11 @@ class TgCall(PyTgCalls):
 
         media = queue.get_next(chat_id)
 
-        # Guard before any attribute access: empty queue ends playback.
+        # Guard before any attribute access: empty queue ends playback,
+        # unless autoplay can find a related track first.
         if not media:
+            if current and await db.get_autoplay(chat_id):
+                return await self._autoplay(chat_id, current)
             return await self.stop(chat_id)
 
         try:
@@ -283,6 +286,25 @@ class TgCall(PyTgCalls):
         media.message_id = msg.id
         await self.play_media(chat_id, msg, media)
 
+    async def _autoplay(self, chat_id: int, current) -> None:
+        """Queue a related track and keep playing; stop when nothing found."""
+        _lang = await lang.get_lang(chat_id)
+        media = await yt.related(current, video=current.video)
+        if not media:
+            return await self.stop(chat_id)
+
+        media.user = _lang["autoplay_label"]
+        msg = await app.send_message(
+            chat_id=chat_id,
+            text=_lang["autoplay_next"].format(media.url, media.title),
+        )
+        media.file_path = await yt.download(media.id, video=media.video)
+        if not media.file_path:
+            await msg.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
+            return await self.stop(chat_id)
+
+        media.message_id = msg.id
+        await self.play_media(chat_id, msg, media)
 
     async def ping(self) -> float:
         pings = [client.ping for client in self.clients]

@@ -76,11 +76,12 @@ async def settings(_, message: types.Message):
     cmd_delete = await db.get_cmd_delete(message.chat.id)
     _language = await db.get_lang(message.chat.id)
     no_thumbnail = await db.get_thumbnail_mode(message.chat.id)
+    autoplay = await db.get_autoplay(message.chat.id)
     await message.reply_text(
         text=message.lang["start_settings"].format(message.chat.title),
         reply_markup=buttons.settings_markup(
             message.lang, admin_only, cmd_delete, _language, message.chat.id,
-            no_thumbnail=no_thumbnail,
+            no_thumbnail=no_thumbnail, autoplay=autoplay,
         ),
         quote=True,
     )

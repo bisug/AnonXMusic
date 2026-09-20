@@ -53,6 +53,88 @@ async def _safe_stream_url(url: str) -> bool:
     return True
 
 
+async def join_assistant(m: types.Message, lang_dict: dict) -> bool:
+    """Make sure the chat's assigned assistant has joined; False on failure.
+
+    Shared by /play and channel play; replies with the error text itself.
+    """
+    chat_id = m.chat.id
+    client = await db.get_client(chat_id)
+    try:
+        member = await app.get_chat_member(chat_id, client.id)
+        if member.status in [
+            enums.ChatMemberStatus.BANNED,
+            enums.ChatMemberStatus.RESTRICTED,
+        ]:
+            try:
+                await app.unban_chat_member(chat_id=chat_id, user_id=client.id)
+            except Exception as ex:
+                logger.error(f"Failed to unban assistant in {chat_id}: {ex}")
+                await m.reply_text(
+                    lang_dict["play_banned"].format(
+                        app.name,
+                        client.id,
+                        client.mention,
+                        f"@{client.username}" if client.username else None,
+                    )
+                )
+                return False
+    except errors.ChatAdminRequired:
+        await m.reply_text(lang_dict["admin_required"])
+        return False
+    # Fresh sessions have no peer cache, so resolve_peer fails —
+    # treat as "not a participant" and invite.
+    except (errors.UserNotParticipant, errors.PeerIdInvalid):
+        if m.chat.username:
+            invite_link = m.chat.username
+            try:
+                await client.resolve_peer(invite_link)
+            except Exception as ex:
+                logger.warning(f"resolve_peer failed for {chat_id}: {ex}")
+        else:
+            try:
+                invite_link = (await app.get_chat(chat_id)).invite_link
+                if not invite_link:
+                    invite_link = await app.export_chat_invite_link(chat_id)
+            except errors.ChatAdminRequired:
+                await m.reply_text(lang_dict["admin_required"])
+                return False
+            except Exception as ex:
+                await m.reply_text(
+                    lang_dict["play_invite_error"].format(type(ex).__name__)
+                )
+                return False
+
+        umm = await m.reply_text(lang_dict["play_invite"].format(app.name))
+        await asyncio.sleep(2)
+        try:
+            result = await client.join_chat(invite_link)
+            # kurigram returns a request object instead of raising here.
+            if isinstance(result, types.ChatJoinResultRequestSent):
+                raise errors.InviteRequestSent
+        except errors.UserAlreadyParticipant:
+            pass
+        except errors.InviteRequestSent:
+            await asyncio.sleep(2)
+            try:
+                await app.approve_chat_join_request(chat_id, client.id)
+            except errors.HideRequesterMissing:
+                pass
+            except Exception as ex:
+                await umm.edit_text(
+                    lang_dict["play_invite_error"].format(type(ex).__name__)
+                )
+                return False
+        except Exception as ex:
+            logger.error(f"Error joining chat - {chat_id}: {ex}")
+            await umm.edit_text(lang_dict["play_invite_error"].format(type(ex).__name__))
+            return False
+
+        await umm.delete()
+        await client.resolve_peer(chat_id)
+    return True
+
+
 def checkUB(play):
     async def wrapper(_, m: types.Message):
         if not m.from_user:
@@ -98,77 +180,8 @@ def checkUB(play):
                 return await m.reply_text(m.lang["play_admin"])
 
         if chat_id not in db.active_calls:
-            client = await db.get_client(chat_id)
-            try:
-                member = await app.get_chat_member(chat_id, client.id)
-                if member.status in [
-                    enums.ChatMemberStatus.BANNED,
-                    enums.ChatMemberStatus.RESTRICTED,
-                ]:
-                    try:
-                        await app.unban_chat_member(
-                            chat_id=chat_id, user_id=client.id
-                        )
-                    except Exception as ex:
-                        logger.error(f"Failed to unban assistant in {chat_id}: {ex}")
-                        return await m.reply_text(
-                            m.lang["play_banned"].format(
-                                app.name,
-                                client.id,
-                                client.mention,
-                                f"@{client.username}" if client.username else None,
-                            )
-                        )
-            except errors.ChatAdminRequired:
-                return await m.reply_text(m.lang["admin_required"])
-            # Fresh sessions have no peer cache, so resolve_peer fails —
-            # treat as "not a participant" and invite.
-            except (errors.UserNotParticipant, errors.PeerIdInvalid):
-                if m.chat.username:
-                    invite_link = m.chat.username
-                    try:
-                        await client.resolve_peer(invite_link)
-                    except Exception as ex:
-                        logger.warning(f"resolve_peer failed for {chat_id}: {ex}")
-                else:
-                    try:
-                        invite_link = (await app.get_chat(chat_id)).invite_link
-                        if not invite_link:
-                            invite_link = await app.export_chat_invite_link(chat_id)
-                    except errors.ChatAdminRequired:
-                        return await m.reply_text(m.lang["admin_required"])
-                    except Exception as ex:
-                        return await m.reply_text(
-                            m.lang["play_invite_error"].format(type(ex).__name__)
-                        )
-
-                umm = await m.reply_text(m.lang["play_invite"].format(app.name))
-                await asyncio.sleep(2)
-                try:
-                    result = await client.join_chat(invite_link)
-                    # kurigram returns a request object instead of raising here.
-                    if isinstance(result, types.ChatJoinResultRequestSent):
-                        raise errors.InviteRequestSent
-                except errors.UserAlreadyParticipant:
-                    pass
-                except errors.InviteRequestSent:
-                    await asyncio.sleep(2)
-                    try:
-                        await app.approve_chat_join_request(chat_id, client.id)
-                    except errors.HideRequesterMissing:
-                        pass
-                    except Exception as ex:
-                        return await umm.edit_text(
-                            m.lang["play_invite_error"].format(type(ex).__name__)
-                        )
-                except Exception as ex:
-                    logger.error(f"Error joining chat - {chat_id}: {ex}")
-                    return await umm.edit_text(
-                        m.lang["play_invite_error"].format(type(ex).__name__)
-                    )
-
-                await umm.delete()
-                await client.resolve_peer(chat_id)
+            if not await join_assistant(m, m.lang):
+                return
 
         if await db.get_cmd_delete(chat_id):
             try:

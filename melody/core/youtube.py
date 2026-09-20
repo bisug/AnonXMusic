@@ -19,6 +19,20 @@ from melody.core import providers
 from melody.helpers import Track, utils
 
 
+def pick_candidate(results: dict, exclude_id: str, duration_limit: int) -> dict | None:
+    """Pick a random playable search result; skip excluded, live and
+    over-duration entries. Pure function so autoplay selection is testable."""
+    candidates = [
+        data
+        for data in (results or {}).get("result", [])
+        if data.get("id")
+        and data.get("id") != exclude_id
+        and data.get("duration")
+        and utils.to_seconds(data.get("duration")) <= duration_limit
+    ]
+    return random.choice(candidates) if candidates else None
+
+
 class _YDLLogger:
     """Forward yt-dlp warnings/errors to the app logger."""
 
@@ -255,6 +269,32 @@ class YouTube:
                 is_live=is_live,
             )
         return None
+
+    async def related(self, track: Track, video: bool = False) -> Track | None:
+        """Find a related track for autoplay, excluding the current one."""
+        try:
+            results = await VideosSearch(track.title, limit=10, with_live=False).next()
+        except Exception as ex:
+            logger.warning("Related search failed for %r: %s", track.title, ex)
+            return None
+        data = pick_candidate(results, track.id, config.DURATION_LIMIT)
+        if not data:
+            return None
+
+        thumbs = data.get("thumbnails") or []
+        thumbnail = thumbs[-1].get("url", "").split("?")[0] if thumbs else None
+        title = data.get("title") or "Unknown"
+        return Track(
+            id=data.get("id"),
+            channel_name=data.get("channel", {}).get("name"),
+            duration=data.get("duration"),
+            duration_sec=utils.to_seconds(data.get("duration")),
+            title=title[:25],
+            thumbnail=thumbnail,
+            url=data.get("link"),
+            view_count=data.get("viewCount", {}).get("short") or "",
+            video=video,
+        )
 
     async def playlist(
         self,
