@@ -7,12 +7,23 @@
 
 .github
 .git
+.gitignore
+.python-version
 docker-compose.yml
 render.yaml
+app.json
+heroku.yml
+Procfile
 Dockerfile
 .dockerignore
 setup
+sample.env
 LICENSE
+README.md
+CHANGELOG.md
+docs/
+wiki/
+tests/
 *.log
 log.txt
 downloads
@@ -20,3 +31,5 @@ cache
 .venv
 venv
 __pycache__
+.ruff_cache
+.deno

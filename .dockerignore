@@ -45,3 +45,13 @@ heroku.yml
 Procfile
 .slugignore
 setup
+sample.env
+Dockerfile
+.dockerignore
+
+# --- Docs / tests never copied into the image ---
+README.md
+CHANGELOG.md
+docs/
+wiki/
+tests/
