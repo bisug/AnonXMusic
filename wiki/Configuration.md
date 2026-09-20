@@ -11,7 +11,7 @@ Source of truth: `config.py`. Copy `sample.env` → `.env`; on hosts set real en
 | `MONGO_URL` | MongoDB connection string (cloud.mongodb.com) |
 | `LOGGER_ID` | Log group/channel ID; bot must be admin there |
 | `OWNER_ID` | Owner user ID |
-| `SESSION` | Pyrogram v2 string session (@StringFatherBot); assistants 2–3 via `SESSION2`/`SESSION3` |
+| `SESSION` | Pyrogram v2 string session — generate with [telegram.tools](https://telegram.tools/session-string-generator#pyrogram,user) (Pyrogram, User) or @StringFatherBot; assistants 2–3 via `SESSION2`/`SESSION3` |
 
 ## Optional (tuning)
 

@@ -78,7 +78,7 @@ docker compose logs -f
 ## Prerequisites
 
 - Python 3.14+, [uv](https://docs.astral.sh/uv/), `ffmpeg` on PATH (Docker image bundles static ffmpeg 9.0 + ffprobe)
-- MongoDB URL, Telegram `API_ID`/`API_HASH`, bot token from @BotFather, one Pyrogram v2 string session from @StringFatherBot
+- MongoDB URL, Telegram `API_ID`/`API_HASH`, bot token from @BotFather, one Pyrogram v2 string session for the assistant account — generate via [telegram.tools](https://telegram.tools/session-string-generator#pyrogram,user) (Pyrogram + User) or @StringFatherBot
 - Optional: [Ookla Speedtest CLI](https://www.speedtest.net/apps/cli) — only used by `/ping -s`; without it that field shows `N/A`
 
 ## Documentation
