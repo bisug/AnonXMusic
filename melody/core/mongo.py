@@ -378,56 +378,7 @@ class MongoDB:
             self.users.extend([user["_id"] async for user in self.usersdb.find()])
         return self.users
 
-
-    async def migrate_coll(self) -> None:
-        logger.info("Migrating users and chats from old collections...")
-
-        users, musers, mchats = [], [], []
-        seen_chats, seen_users = set(), set()
-        users.extend([user async for user in self.usersdb.find()])
-        users.extend([user async for user in self.db.tgusersdb.find()])
-
-        for user in users:
-            _id = user.get("_id")
-            if isinstance(_id, int):
-                user_id = _id
-            else:
-                user_id = int(user.get("user_id"))
-
-            if user_id in seen_users:
-                continue
-            seen_users.add(user_id)
-            musers.append({"_id": user_id})
-
-        await self.usersdb.drop()
-        await self.db.tgusersdb.drop()
-        if musers:
-            await self.usersdb.insert_many(musers)
-
-        async for chat in self.chatsdb.find():
-            _id = chat.get("_id")
-            if isinstance(_id, int):
-                chat_id = _id
-            else:
-                chat_id = int(chat.get("chat_id"))
-
-            if chat_id in seen_chats:
-                continue
-            seen_chats.add(chat_id)
-            mchats.append({"_id": chat_id})
-
-        await self.chatsdb.drop()
-        if mchats:
-            await self.chatsdb.insert_many(mchats)
-
-        await self.cache.insert_one({"_id": "migrated"})
-        logger.info("Migration completed successfully.")
-
     async def load_cache(self) -> None:
-        doc = await self.cache.find_one({"_id": "migrated"})
-        if not doc:
-            await self.migrate_coll()
-
         await self.get_chats()
         await self.get_users()
         await self.get_blacklisted(True)
