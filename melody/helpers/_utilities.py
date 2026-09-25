@@ -11,6 +11,13 @@ from melody import app
 
 
 class Utilities:
+    def format_duration(self, seconds: int) -> str:
+        """Format seconds without losing hours or days."""
+        seconds = max(0, int(seconds))
+        hours, remainder = divmod(seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+
     def format_eta(self, seconds: int) -> str:
         if seconds < 60:
             return f"{seconds}s"

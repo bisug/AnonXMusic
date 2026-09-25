@@ -426,8 +426,6 @@ class TgCall(PyTgCalls):
             if executor:
                 with suppress(Exception):
                     executor.shutdown(wait=False, cancel_futures=True)
-            if hasattr(client, "_is_running"):
-                client._is_running = False
 
         self.clients.clear()
         logger.info("PyTgCalls client(s) stopped.")

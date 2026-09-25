@@ -6,8 +6,6 @@
 import asyncio
 import logging
 import time
-import warnings
-from importlib.metadata import PackageNotFoundError, version
 from logging.handlers import RotatingFileHandler
 
 logging.basicConfig(
@@ -25,28 +23,6 @@ logging.getLogger("pymongo").setLevel(logging.ERROR)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("pytgcalls").setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
-
-
-def _uvloop_needs_deprecation_filter(uvloop_version: str | None = None) -> bool:
-    """True while installed uvloop (<= 0.22.1) triggers the 3.14 iscoroutinefunction warning."""
-    if uvloop_version is None:
-        try:
-            uvloop_version = version("uvloop")
-        except PackageNotFoundError:
-            return False  # not installed (e.g. win32): nothing to silence
-    # "0.22.1" -> (0, 22, 1); unparseable fails safe (warn).
-    numbers = tuple(int(part) for part in uvloop_version.split(".") if part.isdigit())
-    if not numbers:
-        return False
-    return numbers[:3] <= (0, 22, 1)
-
-
-if _uvloop_needs_deprecation_filter():
-    warnings.filterwarnings(
-        "ignore",
-        message=r"'asyncio\.iscoroutinefunction' is deprecated",
-        category=DeprecationWarning,
-    )
 
 
 __version__ = "3.0.3"
