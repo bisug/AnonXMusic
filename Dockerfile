@@ -25,7 +25,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         --python /usr/local/bin/python3.14 \
     `# Drop import-time-only weight from the venv before it ships.` \
     && find /app/.venv -name '__pycache__' -type d -prune -exec rm -rf {} + \
-    && rm -rf /app/.venv/lib/python3.14/site-packages/*.dist-info \
     && .venv/bin/python -c 'import sys; print("venv python:", sys.executable)' \
     && .venv/bin/python -c 'import pytgcalls, yt_dlp; print("deps import OK")'
 
@@ -94,8 +93,11 @@ ENV PATH="/app/.venv/bin:${PATH}" \
 COPY --chown=appuser:appuser melody ./melody
 COPY --chown=appuser:appuser config.py ./
 
-# Runtime dirs owned by appuser at creation — no chown -R over the venv.
-RUN mkdir -p cache downloads melody/cookies && chown appuser:appuser cache downloads melody/cookies
+# Runtime state is writable; application files stay owned by appuser.
+RUN mkdir -p cache downloads melody/cookies runtime \
+    && chown appuser:appuser cache downloads melody/cookies runtime \
+    && touch log.txt \
+    && chown appuser:appuser log.txt
 USER appuser
 
 # start runs `uv run python3 -m melody`; with the venv already on PATH and
