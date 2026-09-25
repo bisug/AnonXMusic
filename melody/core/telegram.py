@@ -7,6 +7,7 @@ import asyncio
 import os
 import time
 from contextlib import suppress
+from html import escape
 
 from pyrogram import types
 

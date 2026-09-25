@@ -6,6 +6,7 @@
 import asyncio
 from collections import defaultdict
 from contextlib import asynccontextmanager, suppress
+from html import escape
 from pathlib import Path
 
 from ntgcalls import (ConnectionNotFound, TelegramServerError,
@@ -216,10 +217,10 @@ class TgCall(PyTgCalls):
                         else None
                     )
                 text = _lang["play_media"].format(
-                    media.url,
-                    media.title,
+                    escape(media.url or "", quote=True),
+                    escape(media.title or ""),
                     "🔴 LIVE" if is_live else media.duration,
-                    media.user,
+                    escape(media.user or ""),
                 )
                 keyboard = buttons.controls(chat_id)
                 media.rich_ui = False
@@ -358,7 +359,9 @@ class TgCall(PyTgCalls):
         media.user = _lang["autoplay_label"]
         msg = await app.send_message(
             chat_id=chat_id,
-            text=_lang["autoplay_next"].format(media.url, media.title),
+            text=_lang["autoplay_next"].format(
+                escape(media.url or "", quote=True), escape(media.title or "")
+            ),
         )
         media.file_path = await yt.download(media.id, video=media.video)
         if not media.file_path:

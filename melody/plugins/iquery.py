@@ -3,6 +3,8 @@
 # This file is part of Melody
 
 
+from html import escape
+
 from py_yt import VideosSearch
 from pyrogram import types
 
@@ -33,12 +35,12 @@ async def inline_query_handler(_, query: types.InlineQuery):
 
             description = f"{views} | {duration} | {channel} | {published}"
             caption = (
-                f"<b>Title:</b> <a href='{link}'>{title[:250]}</a>\n\n"
-                f"<b>Duration:</b> {duration}\n"
-                f"<b>Views:</b> <code>{views}</code>\n"
-                f"<b>Channel:</b> <a href='{channellink}'>{channel}</a>\n"
-                f"<b>Published:</b> {published}\n\n"
-                f"<u><i>Fetched by {app.name}</i></u>"
+                f"<b>Title:</b> <a href='{escape(link, quote=True)}'>{escape(title[:250])}</a>\n\n"
+                f"<b>Duration:</b> {escape(duration)}\n"
+                f"<b>Views:</b> <code>{escape(views)}</code>\n"
+                f"<b>Channel:</b> <a href='{escape(channellink, quote=True)}'>{escape(channel)}</a>\n"
+                f"<b>Published:</b> {escape(published)}\n\n"
+                f"<u><i>Fetched by {escape(app.name)}</i></u>"
             )
 
             answers.append(

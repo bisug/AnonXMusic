@@ -3,6 +3,8 @@
 # This file is part of Melody
 
 import asyncio
+from html import escape
+
 from pyrogram import enums, filters, types
 
 from melody import app, config, db, lang
@@ -43,9 +45,11 @@ async def start(_, message: types.Message):
         return await _help(_, message)
 
     _text = (
-        message.lang["start_pm"].format(message.from_user.first_name, app.name)
+        message.lang["start_pm"].format(
+            escape(message.from_user.first_name or ""), escape(app.name)
+        )
         if private
-        else message.lang["start_gp"].format(app.name)
+        else message.lang["start_gp"].format(escape(app.name))
     )
 
     await app.refresh_support_links()
@@ -78,7 +82,7 @@ async def settings(_, message: types.Message):
     no_thumbnail = await db.get_thumbnail_mode(message.chat.id)
     autoplay = await db.get_autoplay(message.chat.id)
     await message.reply_text(
-        text=message.lang["start_settings"].format(message.chat.title),
+        text=message.lang["start_settings"].format(escape(message.chat.title or "")),
         reply_markup=buttons.settings_markup(
             message.lang, admin_only, cmd_delete, _language, message.chat.id,
             no_thumbnail=no_thumbnail, autoplay=autoplay,

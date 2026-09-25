@@ -4,6 +4,7 @@
 
 
 import random
+from html import escape
 
 from pyrogram import filters, types
 
@@ -62,10 +63,10 @@ async def _queue_func(_, m: types.Message):
         else config.DEFAULT_THUMB
     ) if config.THUMB_GEN else None
     _text = m.lang["queue_curr"].format(
-        _media.url,
-        _media.title[:50],
+        escape(_media.url or "", quote=True),
+        escape(_media.title[:50]),
         _media.duration,
-        _media.user,
+        escape(_media.user or ""),
     )
     _queue.pop(0)
 
@@ -76,7 +77,7 @@ async def _queue_func(_, m: types.Message):
             if i == 15:
                 break
             _text += m.lang["queue_item"].format(
-                i, media.title, media.duration
+                i, escape(media.title), media.duration
             )
             shown += 1
         _text += "</blockquote>"

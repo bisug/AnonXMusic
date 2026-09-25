@@ -3,6 +3,8 @@
 # This file is part of Melody
 
 
+from html import escape
+
 from pyrogram import filters, types
 
 from melody import anon, app, config, db, lang, logger, queue, tg, yt
@@ -65,10 +67,10 @@ async def _channel_watch(_, m: types.Message):
         return await sent.edit_text(
             _lang["play_queued"].format(
                 position,
-                file.url,
-                file.title,
+                escape(file.url or "", quote=True),
+                escape(file.title),
                 "🔴 LIVE" if file.is_live else file.duration,
-                file.user,
+                escape(file.user or ""),
             ),
             reply_markup=buttons.play_queued(chat_id, file.id, _lang["play_now"]),
         )

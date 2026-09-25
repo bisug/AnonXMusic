@@ -4,6 +4,7 @@
 
 
 import time
+from html import escape
 
 from pyrogram import filters, types
 
@@ -38,7 +39,7 @@ async def _authlist(_, m: types.Message):
     if not auth:
         return await m.reply_text(m.lang["auth_empty"])
 
-    auth_txt = m.lang["auth_list"].format(m.chat.title)
+    auth_txt = m.lang["auth_list"].format(escape(m.chat.title or ""))
     for i, user in enumerate(auth, start=1):
         auth_txt += f"\n{i}. <a href=tg://user?id={user}>{user}</a>"
     await m.reply_text(auth_txt)

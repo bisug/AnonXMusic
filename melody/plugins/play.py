@@ -4,6 +4,7 @@
 
 
 import asyncio
+from html import escape
 
 from pyrogram import filters, types
 
@@ -25,7 +26,7 @@ def playlist_to_queue(chat_id: int, tracks: list) -> tuple[str, int, int]:
             skipped += 1
             continue
         pos = queue.add(chat_id, track)
-        text += f"<b>{pos + 1}.</b> {track.title}\n"
+        text += f"<b>{pos + 1}.</b> {escape(track.title)}\n"
         added += 1
     if len(text) > 1948:
         # Cut at the last line boundary so we never split an HTML tag/entity.
@@ -155,8 +156,8 @@ async def play_hndlr(
         await sent.edit_text(
             m.lang["play_queued"].format(
                 position,
-                file.url,
-                file.title,
+                escape(file.url, quote=True),
+                escape(file.title),
                 "🔴 LIVE" if file.is_live else file.duration,
                 m.from_user.mention,
             ),
