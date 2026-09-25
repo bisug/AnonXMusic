@@ -49,14 +49,14 @@ async def _blacklist(_, m: types.Message):
     if m.command[0] == "blacklist":
         if chat_id in db.blacklisted or chat_id in app.bl_users:
             return await m.reply_text(m.lang["bl_already"])
-        runtime.add(chat_id)
         await db.add_blacklist(chat_id)
+        runtime.add(chat_id)
         if is_chat and chat_id in db.active_calls:
             await anon.stop(chat_id)
         await m.reply_text(m.lang["bl_added"])
     else:
         if chat_id not in db.blacklisted and chat_id not in app.bl_users:
             return await m.reply_text(m.lang["bl_not"])
-        runtime.discard(chat_id)
         await db.del_blacklist(chat_id)
+        runtime.discard(chat_id)
         await m.reply_text(m.lang["bl_removed"])

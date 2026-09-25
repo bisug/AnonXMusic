@@ -120,18 +120,18 @@ class MongoDB:
     async def add_auth(self, chat_id: int, user_id: int) -> None:
         users = await self._get_auth(chat_id)
         if user_id not in users:
-            users.add(user_id)
             await self.authdb.update_one(
                 {"_id": chat_id}, {"$addToSet": {"user_ids": user_id}}, upsert=True
             )
+            users.add(user_id)
 
     async def rm_auth(self, chat_id: int, user_id: int) -> None:
         users = await self._get_auth(chat_id)
         if user_id in users:
-            users.discard(user_id)
             await self.authdb.update_one(
                 {"_id": chat_id}, {"$pull": {"user_ids": user_id}}
             )
+            users.discard(user_id)
 
     # ASSISTANT METHODS
     async def set_assistant(self, chat_id: int) -> int:
@@ -171,13 +171,15 @@ class MongoDB:
     # BLACKLIST METHODS
     async def add_blacklist(self, chat_id: int) -> None:
         if str(chat_id).startswith("-"):
-            self.blacklisted.append(chat_id)
-            return await self.cache.update_one(
+            result = await self.cache.update_one(
                 {"_id": "bl_chats"},
                 {"$addToSet": {"chat_ids": chat_id}},
                 upsert=True,
             )
-        await self.cache.update_one(
+            if chat_id not in self.blacklisted:
+                self.blacklisted.append(chat_id)
+            return result
+        return await self.cache.update_one(
             {"_id": "bl_users"},
             {"$addToSet": {"user_ids": chat_id}},
             upsert=True,
@@ -185,12 +187,14 @@ class MongoDB:
 
     async def del_blacklist(self, chat_id: int) -> None:
         if str(chat_id).startswith("-"):
-            self.blacklisted.remove(chat_id)
-            return await self.cache.update_one(
+            result = await self.cache.update_one(
                 {"_id": "bl_chats"},
                 {"$pull": {"chat_ids": chat_id}},
             )
-        await self.cache.update_one(
+            if chat_id in self.blacklisted:
+                self.blacklisted.remove(chat_id)
+            return result
+        return await self.cache.update_one(
             {"_id": "bl_users"},
             {"$pull": {"user_ids": chat_id}},
         )
@@ -227,15 +231,15 @@ class MongoDB:
         return chat_id in self.cmd_delete
 
     async def set_cmd_delete(self, chat_id: int, delete: bool = False) -> None:
-        if delete:
-            self.cmd_delete.add(chat_id)
-        else:
-            self.cmd_delete.discard(chat_id)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"cmd_delete": delete}},
             upsert=True,
         )
+        if delete:
+            self.cmd_delete.add(chat_id)
+        else:
+            self.cmd_delete.discard(chat_id)
 
     # THUMBNAIL MODE METHODS
     async def get_thumbnail_mode(self, chat_id: int) -> bool:
@@ -249,15 +253,15 @@ class MongoDB:
 
     async def set_thumbnail_mode(self, chat_id: int, disable: bool = False) -> None:
         """Set whether thumbnails are disabled (disable=True means no thumbnail)."""
-        if disable:
-            self.thumbnail_enabled.discard(chat_id)
-        else:
-            self.thumbnail_enabled.add(chat_id)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"thumbnail_enabled": not disable}},
             upsert=True,
         )
+        if disable:
+            self.thumbnail_enabled.discard(chat_id)
+        else:
+            self.thumbnail_enabled.add(chat_id)
 
     # LANGUAGE METHODS
     async def set_lang(self, chat_id: int, lang_code: str):
@@ -301,15 +305,15 @@ class MongoDB:
         return chat_id in self.admin_play
 
     async def set_play_mode(self, chat_id: int, remove: bool = False) -> None:
-        if remove:
-            self.admin_play.discard(chat_id)
-        else:
-            self.admin_play.add(chat_id)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"admin_play": not remove}},
             upsert=True,
         )
+        if remove:
+            self.admin_play.discard(chat_id)
+        else:
+            self.admin_play.add(chat_id)
 
     # AUTOPLAY METHODS
     async def get_autoplay(self, chat_id: int) -> bool:
@@ -320,15 +324,15 @@ class MongoDB:
         return chat_id in self.autoplay
 
     async def set_autoplay(self, chat_id: int, enable: bool = False) -> None:
-        if enable:
-            self.autoplay.add(chat_id)
-        else:
-            self.autoplay.discard(chat_id)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"autoplay": enable}},
             upsert=True,
         )
+        if enable:
+            self.autoplay.add(chat_id)
+        else:
+            self.autoplay.discard(chat_id)
 
     # CHANNEL PLAY METHODS
     async def get_channel_play(self, chat_id: int) -> int | None:
@@ -339,15 +343,15 @@ class MongoDB:
         return self.channel_play[chat_id]
 
     async def set_channel_play(self, chat_id: int, channel_id: int | None) -> None:
-        if channel_id:
-            self.channel_play[chat_id] = channel_id
-        else:
-            self.channel_play.pop(chat_id, None)
         await self.chatsdb.update_one(
             {"_id": chat_id},
             {"$set": {"channel_play": channel_id or None}},
             upsert=True,
         )
+        if channel_id:
+            self.channel_play[chat_id] = channel_id
+        else:
+            self.channel_play.pop(chat_id, None)
 
     # SUDO METHODS
     async def add_sudo(self, user_id: int) -> None:

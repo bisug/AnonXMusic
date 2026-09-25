@@ -20,15 +20,15 @@ async def _sudo(_, m: types.Message):
         if user.id in app.sudoers:
             return await m.reply_text(m.lang["sudo_already"].format(user.mention))
 
-        app.sudoers.add(user.id)
         await db.add_sudo(user.id)
+        app.sudoers.add(user.id)
         await m.reply_text(m.lang["sudo_added"].format(user.mention))
     else:
         if user.id not in app.sudoers:
             return await m.reply_text(m.lang["sudo_not"].format(user.mention))
 
-        app.sudoers.discard(user.id)
         await db.del_sudo(user.id)
+        app.sudoers.discard(user.id)
         await m.reply_text(m.lang["sudo_removed"].format(user.mention))
 
 
