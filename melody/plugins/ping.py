@@ -25,6 +25,7 @@ _OOKLA_CMD = (
 )
 # Cap so a hung server can't stall /ping.
 _OOKLA_TIMEOUT = 90
+_SPEEDTEST = asyncio.Semaphore(1)
 
 
 def _bandwidth_mbps(bytes_per_second: float) -> str:
@@ -37,26 +38,26 @@ async def _run_speedtest() -> str:
         logger.debug("Ookla Speedtest CLI not found in PATH; skipping speed test.")
         return "N/A"
 
-    proc = await asyncio.create_subprocess_exec(
-        *_OOKLA_CMD,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    try:
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), _OOKLA_TIMEOUT)
-    except TimeoutError:
-        logger.warning("Speedtest timed out after %ss.", _OOKLA_TIMEOUT)
-        return "N/A"
-    except Exception as ex:  # noqa: BLE001 — probe degrades to "N/A", never raises
-        logger.warning("Speedtest failed: %r", ex)
-        return "N/A"
-    finally:
-        # Always kill and reap the child.
-        if proc.returncode is None:
-            with suppress(ProcessLookupError):
-                proc.kill()
-            with suppress(Exception):
-                await proc.wait()
+    async with _SPEEDTEST:
+        proc = await asyncio.create_subprocess_exec(
+            *_OOKLA_CMD,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), _OOKLA_TIMEOUT)
+        except TimeoutError:
+            logger.warning("Speedtest timed out after %ss.", _OOKLA_TIMEOUT)
+            return "N/A"
+        except Exception as ex:  # noqa: BLE001 — probe degrades to "N/A", never raises
+            logger.warning("Speedtest failed: %r", ex)
+            return "N/A"
+        finally:
+            if proc.returncode is None:
+                with suppress(ProcessLookupError):
+                    proc.kill()
+                with suppress(Exception):
+                    await proc.wait()
 
     if proc.returncode != 0:
         logger.warning(

@@ -17,6 +17,8 @@ from melody.helpers import Track
 
 
 class Thumbnail:
+    MAX_DOWNLOAD_BYTES = 5 * 1024**2
+
     def __init__(self):
         self.rect = (914, 514)
         self.size = (1280, 720)
@@ -77,9 +79,19 @@ class Thumbnail:
         if not self.session or self.session.closed:
             self.session = aiohttp.ClientSession(timeout=self.timeout)
 
-        async with self.session.get(url) as resp:
+        async with self.session.get(url, allow_redirects=False) as resp:
             resp.raise_for_status()
-            return await resp.read()
+            if (
+                resp.content_length is not None
+                and resp.content_length > self.MAX_DOWNLOAD_BYTES
+            ):
+                raise ValueError("Thumbnail response is too large")
+            data = bytearray()
+            async for chunk in resp.content.iter_chunked(64 * 1024):
+                data.extend(chunk)
+                if len(data) > self.MAX_DOWNLOAD_BYTES:
+                    raise ValueError("Thumbnail response is too large")
+            return bytes(data)
 
     async def _generate(self, song: Track, size=(1280, 720)) -> str:
         output = Path("cache") / f"{song.id}.jpg"

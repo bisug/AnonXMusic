@@ -54,8 +54,12 @@ async def _channel_watch(_, m: types.Message):
         return
 
     _lang = await lang.get_lang(chat_id)
+    async with anon.transition(chat_id):
+        if queue.size(chat_id) >= config.QUEUE_LIMIT:
+            return
+
     sent = await m.reply_text(_lang["play_searching"])
-    setattr(sent, "lang", _lang)
+    sent.lang = _lang
     file = await tg.download(m, sent)
     if not file:
         return
@@ -63,7 +67,10 @@ async def _channel_watch(_, m: types.Message):
     file.user = m.sender_chat.title or "Channel"
 
     if await db.get_call(chat_id):
-        position = queue.add(chat_id, file)
+        async with anon.transition(chat_id):
+            if queue.size(chat_id) >= config.QUEUE_LIMIT:
+                return await sent.delete()
+            position = queue.add(chat_id, file)
         return await sent.edit_text(
             _lang["play_queued"].format(
                 position,
@@ -84,4 +91,27 @@ async def _channel_watch(_, m: types.Message):
         else:
             file.file_path = await yt.download(file.id, video=file.video)
 
-    await anon.play_media(chat_id=chat_id, message=sent, media=file)
+    if await db.get_call(chat_id):
+        async with anon.transition(chat_id):
+            if queue.size(chat_id) >= config.QUEUE_LIMIT:
+                return await sent.delete()
+            position = queue.add(chat_id, file)
+        return await sent.edit_text(
+            _lang["play_queued"].format(
+                position,
+                escape(file.url or "", quote=True),
+                escape(file.title),
+                "🔴 LIVE" if file.is_live else file.duration,
+                escape(file.user or ""),
+            ),
+            reply_markup=buttons.play_queued(chat_id, file.id, _lang["play_now"]),
+        )
+
+    async with anon.start_guard(chat_id) as allowed:
+        if not allowed:
+            return await sent.delete()
+        async with anon.transition(chat_id):
+            if queue.size(chat_id) >= config.QUEUE_LIMIT:
+                return await sent.delete()
+            queue.add(chat_id, file)
+            await anon.play_media(chat_id, sent, file, _locked=True)

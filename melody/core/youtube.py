@@ -359,18 +359,16 @@ class YouTube:
         cached = self._cached_download(video_id, video)
         if cached:
             return cached
-        owner = asyncio.current_task()
-        existing = self._inflight.get(key)
-        if existing is not None and existing is not owner:
-            return await asyncio.shield(existing)
-        if existing is owner:
-            return cached
-        self._inflight[key] = owner
-        try:
-            return await self._download_locked(video_id, video, prefetch)
-        finally:
-            if self._inflight.get(key) is owner:
-                self._inflight.pop(key, None)
+        task = self._inflight.get(key)
+        if task is None:
+            task = asyncio.create_task(self._download_locked(video_id, video, prefetch))
+            self._inflight[key] = task
+            task.add_done_callback(
+                lambda t, k=key: self._inflight.pop(k, None)
+                if self._inflight.get(k) is t
+                else None
+            )
+        return await asyncio.shield(task)
 
     async def _download_locked(
         self, video_id: str, video: bool, prefetch: bool
