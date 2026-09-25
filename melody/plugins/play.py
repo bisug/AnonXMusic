@@ -148,6 +148,12 @@ async def play_hndlr(
             queue.force_add(m.chat.id, file)
             position = 0
         else:
+            if queue.size(m.chat.id) >= config.QUEUE_LIMIT:
+                if _dl_task:
+                    _dl_task.cancel()
+                return await sent.edit_text(
+                    m.lang["play_queue_full"].format(config.QUEUE_LIMIT)
+                )
             position = queue.add(m.chat.id, file)
 
     if position != 0 or await db.get_call(m.chat.id):
@@ -187,8 +193,32 @@ async def play_hndlr(
     if _dl_task and not _dl_task.done():
         _dl_task.cancel()
 
-    async with anon.transition(m.chat.id):
-        await anon.play_media(chat_id=m.chat.id, message=sent, media=file, _locked=True)
+    if await db.get_call(m.chat.id):
+        return await sent.edit_text(
+            m.lang["play_queued"].format(
+                0,
+                escape(file.url, quote=True),
+                escape(file.title),
+                "🔴 LIVE" if file.is_live else file.duration,
+                m.from_user.mention,
+            )
+        )
+
+    async with anon.start_guard(m.chat.id) as allowed:
+        if not allowed:
+            return await sent.edit_text(m.lang["processing"])
+        if await db.get_call(m.chat.id):
+            return await sent.edit_text(
+                m.lang["play_queued"].format(
+                    0,
+                    escape(file.url, quote=True),
+                    escape(file.title),
+                    "🔴 LIVE" if file.is_live else file.duration,
+                    m.from_user.mention,
+                )
+            )
+        async with anon.transition(m.chat.id):
+            await anon.play_media(chat_id=m.chat.id, message=sent, media=file, _locked=True)
     if not tracks:
         return
     await announce_playlist(m, tracks)
