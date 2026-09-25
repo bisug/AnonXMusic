@@ -26,6 +26,10 @@ async def _safe_stream_url(url: str) -> bool:
     host = parsed.hostname
     if not host:
         return False
+    if config.STREAM_HOSTS and host.lower() not in config.STREAM_HOSTS:
+        return False
+    if not config.STREAM_HOSTS:
+        return False
 
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     try:

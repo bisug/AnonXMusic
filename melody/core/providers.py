@@ -4,15 +4,46 @@
 
 """HTTP fallback providers: (video_id, video) -> local path or None."""
 
+import asyncio
+import ipaddress
+import socket
 from contextlib import suppress
 from pathlib import Path
+from urllib.parse import urlparse
 
 import aiohttp
 
 from melody import config, logger
 
 CHUNK = 131072
+MAX_MEDIA_BYTES = 2 * 1024**3
 WATCH_BASE = "https://www.youtube.com/watch?v="
+
+
+async def _public_url(url: str) -> bool:
+    """Reject provider URLs that resolve to non-public addresses."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return False
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        infos = await asyncio.to_thread(
+            socket.getaddrinfo, parsed.hostname, port, 0, socket.SOCK_STREAM
+        )
+        for info in infos:
+            addr = ipaddress.ip_address(info[4][0])
+            if (
+                addr.is_private
+                or addr.is_loopback
+                or addr.is_link_local
+                or addr.is_reserved
+                or addr.is_multicast
+                or addr.is_unspecified
+            ):
+                return False
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 def _filename(video_id: str, video: bool) -> Path:
@@ -35,17 +66,25 @@ def _discard_partial(tmpfile: Path, filename: Path) -> None:
 async def _stream_to_file(
     resp: aiohttp.ClientResponse, tmpfile: Path
 ) -> bool:
-    """Stream a response body to tmpfile; False on JSON/text error bodies."""
+    """Stream a bounded response body to tmpfile; False on error bodies."""
     content_type = resp.headers.get("Content-Type", "").lower()
     if "application/json" in content_type or content_type.startswith("text/"):
-        message = (await resp.text())[:200]
+        message = (await resp.content.read(200)).decode(errors="replace")
         logger.warning("API fallback error body: %s", message)
         return False
+    content_length = resp.content_length
+    if content_length is not None and content_length > MAX_MEDIA_BYTES:
+        logger.warning("API fallback response is too large: %s bytes", content_length)
+        return False
     Path("downloads").mkdir(parents=True, exist_ok=True)
+    total = 0
     with open(tmpfile, "wb") as fw:
         async for chunk in resp.content.iter_chunked(CHUNK):
-            if chunk:
-                fw.write(chunk)
+            total += len(chunk)
+            if total > MAX_MEDIA_BYTES:
+                fw.close()
+                return False
+            fw.write(chunk)
     return _usable(tmpfile)
 
 
@@ -60,9 +99,9 @@ async def _fetch_json(
     session: aiohttp.ClientSession, url: str, **kw
 ) -> dict | None:
     """GET a JSON document; None (with a log) on non-200/bad JSON."""
-    async with session.get(url, **kw) as resp:
+    async with session.get(url, allow_redirects=False, **kw) as resp:
         if resp.status != 200:
-            logger.warning("API fallback %s: HTTP %s", url, resp.status)
+            logger.warning("API fallback %s: HTTP %s", urlparse(url).hostname, resp.status)
             return None
         try:
             return await resp.json()
@@ -131,14 +170,14 @@ async def onegrab(video_id: str, video: bool = False) -> str | None:
                 headers={"X-API-Key": config.ONEGRAB_KEY},
             )
         cdnurl = (data or {}).get("cdnurl")
-        if not cdnurl:
-            logger.warning("OneGrab: no cdnurl for %s", video_id)
+        if not cdnurl or not await _public_url(cdnurl):
+            logger.warning("OneGrab: invalid cdnurl for %s", video_id)
             return None
 
         async with aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=600 if video else 300)
         ) as session:
-            async with session.get(cdnurl) as resp:
+            async with session.get(cdnurl, allow_redirects=False) as resp:
                 if resp.status != 200:
                     logger.warning(
                         "OneGrab CDN failed for %s: HTTP %s", video_id, resp.status
@@ -177,7 +216,7 @@ async def nexgen(video_id: str, video: bool = False) -> str | None:
                     params={"api": config.NEXGEN_KEY},
                 )
                 link = (data or {}).get("link")
-                if not link or (data or {}).get("status") != "done":
+                if not link or (data or {}).get("status") != "done" or not await _public_url(link):
                     logger.warning(
                         "NexGen video not ready for %s: %s", video_id, data
                     )
@@ -189,7 +228,7 @@ async def nexgen(video_id: str, video: bool = False) -> str | None:
                     f"?api={config.NEXGEN_KEY}"
                 )
 
-            async with session.get(stream_url) as resp:
+            async with session.get(stream_url, allow_redirects=False) as resp:
                 if resp.status != 200:
                     logger.warning(
                         "NexGen stream failed for %s: HTTP %s",

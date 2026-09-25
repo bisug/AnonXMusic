@@ -76,6 +76,13 @@ class Config:
         self.NEXGEN_VIDEO_URL = getenv("NEXGEN_VIDEO_URL", "https://api.video.nexgenbots.xyz").rstrip("/")
         self.NEXGEN_KEY = getenv("NEXGEN_KEY", "")
 
+        # Direct stream hosts approved for ffmpeg playback. Empty disables M3U8 input.
+        self.STREAM_HOSTS = {
+            host.strip().lower()
+            for host in getenv("STREAM_HOSTS", "").split(",")
+            if host.strip()
+        }
+
         # PO token provider (bgutil-ytdlp-pot-provider plugin). If set, yt-dlp
         # fetches proof-of-origin tokens from this HTTP server, which makes
         # requests look like a real browser and largely avoids YouTube's
@@ -90,3 +97,5 @@ class Config:
         ]
         if missing:
             raise SystemExit(f"Missing required environment variables: {', '.join(missing)}")
+        self.SUPPORT_CHANNEL_RAW = self.SUPPORT_CHANNEL_RAW.strip()
+        self.SUPPORT_CHAT_RAW = self.SUPPORT_CHAT_RAW.strip()
