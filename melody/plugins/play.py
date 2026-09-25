@@ -7,7 +7,7 @@ import asyncio
 
 from pyrogram import filters, types
 
-from melody import anon, app, config, db, lang, queue, tg, yt
+from melody import anon, app, config, db, lang, logger, queue, tg, yt
 from melody.helpers import buttons, utils
 from melody.helpers._play import checkUB
 
@@ -134,34 +134,39 @@ async def play_hndlr(
         _dl_task = asyncio.create_task(yt.download(file.id, video=video))
 
     if await db.is_logger():
-        await utils.play_log(
-            m, sent.link, file.title, "🔴 LIVE" if file.is_live else file.duration
-        )
+        try:
+            await utils.play_log(
+                m, sent.link, file.title, "🔴 LIVE" if file.is_live else file.duration
+            )
+        except Exception as ex:
+            logger.warning("Play logging failed for %s: %r", m.chat.id, ex)
 
     file.user = mention
-    if force:
-        queue.force_add(m.chat.id, file)
-    else:
-        position = queue.add(m.chat.id, file)
+    async with anon.transition(m.chat.id):
+        if force:
+            queue.force_add(m.chat.id, file)
+            position = 0
+        else:
+            position = queue.add(m.chat.id, file)
 
-        if position != 0 or await db.get_call(m.chat.id):
-            if _dl_task:
-                _dl_task.cancel()
-            await sent.edit_text(
-                m.lang["play_queued"].format(
-                    position,
-                    file.url,
-                    file.title,
-                    "🔴 LIVE" if file.is_live else file.duration,
-                    m.from_user.mention,
-                ),
-                reply_markup=buttons.play_queued(
-                    m.chat.id, file.id, m.lang["play_now"]
-                ),
-            )
-            if tracks:
-                await announce_playlist(m, tracks)
-            return
+    if position != 0 or await db.get_call(m.chat.id):
+        if _dl_task:
+            _dl_task.cancel()
+        await sent.edit_text(
+            m.lang["play_queued"].format(
+                position,
+                file.url,
+                file.title,
+                "🔴 LIVE" if file.is_live else file.duration,
+                m.from_user.mention,
+            ),
+            reply_markup=buttons.play_queued(
+                m.chat.id, file.id, m.lang["play_now"]
+            ),
+        )
+        if tracks:
+            await announce_playlist(m, tracks)
+        return
 
     if not file.file_path:
         if file.is_live:
@@ -181,7 +186,8 @@ async def play_hndlr(
     if _dl_task and not _dl_task.done():
         _dl_task.cancel()
 
-    await anon.play_media(chat_id=m.chat.id, message=sent, media=file)
+    async with anon.transition(m.chat.id):
+        await anon.play_media(chat_id=m.chat.id, message=sent, media=file, _locked=True)
     if not tracks:
         return
     await announce_playlist(m, tracks)

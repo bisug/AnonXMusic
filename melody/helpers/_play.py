@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from pyrogram import enums, errors, types
 
-from melody import app, config, db, logger, queue, yt
+from melody import anon, app, config, db, logger, queue, yt
 from melody.helpers import utils
 
 
@@ -189,6 +189,12 @@ def checkUB(play):
             except Exception:
                 pass
 
-        return await play(_, m, force, m3u8, video, url, shuffle)
+        if chat_id in db.active_calls:
+            return await play(_, m, force, m3u8, video, url, shuffle)
+
+        async with anon.start_guard(chat_id) as allowed:
+            if not allowed:
+                return await m.reply_text(m.lang["processing"])
+            return await play(_, m, force, m3u8, video, url, shuffle)
 
     return wrapper

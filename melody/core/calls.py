@@ -4,7 +4,8 @@
 
 
 import asyncio
-from contextlib import suppress
+from collections import defaultdict
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from ntgcalls import (ConnectionNotFound, TelegramServerError,
@@ -25,19 +26,55 @@ class TgCall(PyTgCalls):
         self.clients = []
         # Prefetch downloads cancelled on stop.
         self._prefetch: dict[int, asyncio.Task] = {}
+        self._chat_locks = defaultdict(asyncio.Lock)
+        self._starting: set[int] = set()
+
+    @asynccontextmanager
+    async def transition(self, chat_id: int):
+        """Serialize queue and call mutations for one chat."""
+        async with self._chat_locks[chat_id]:
+            yield
+
+    @asynccontextmanager
+    async def start_guard(self, chat_id: int):
+        """Allow one new start while active chats may still enqueue."""
+        if chat_id in db.active_calls:
+            yield True
+            return
+        if chat_id in self._starting:
+            yield False
+            return
+        self._starting.add(chat_id)
+        try:
+            yield True
+        finally:
+            self._starting.discard(chat_id)
 
     async def pause(self, chat_id: int) -> bool:
-        client = await db.get_assistant(chat_id)
-        await db.playing(chat_id, paused=True)
-        return await client.pause(chat_id)
+        async with self.transition(chat_id):
+            return await self._pause(chat_id)
 
+    async def _pause(self, chat_id: int) -> bool:
+        client = await db.get_assistant(chat_id)
+        await client.pause(chat_id)
+        await db.playing(chat_id, paused=True)
+        return True
 
     async def resume(self, chat_id: int) -> bool:
+        async with self.transition(chat_id):
+            return await self._resume(chat_id)
+
+    async def _resume(self, chat_id: int) -> bool:
         client = await db.get_assistant(chat_id)
+        await client.resume(chat_id)
         await db.playing(chat_id, paused=False)
-        return await client.resume(chat_id)
+        return True
 
     async def stop(self, chat_id: int) -> None:
+        async with self.transition(chat_id):
+            await self._stop(chat_id)
+
+    async def _stop(self, chat_id: int) -> None:
         client = await db.get_assistant(chat_id)
         prefetch = self._prefetch.pop(chat_id, None)
         if prefetch and not prefetch.done():
@@ -53,18 +90,27 @@ class TgCall(PyTgCalls):
                 )
             except Exception:
                 pass
-        
+
+        await client.leave_call(chat_id, close=False)
         queue.clear(chat_id)
         await db.remove_call(chat_id)
         await db.set_loop(chat_id, 0)
 
-        try:
-            await client.leave_call(chat_id, close=False)
-        except Exception as ex:
-            logger.warning("Failed to leave call for %s: %s", chat_id, ex)
-
-
     async def play_media(
+        self,
+        chat_id: int,
+        message: Message,
+        media: Media | Track,
+        seek_time: int = 0,
+        *,
+        _locked: bool = False,
+    ) -> None:
+        if _locked:
+            return await self._play_media(chat_id, message, media, seek_time)
+        async with self.transition(chat_id):
+            await self._play_media(chat_id, message, media, seek_time)
+
+    async def _play_media(
         self,
         chat_id: int,
         message: Message,
@@ -211,18 +257,18 @@ class TgCall(PyTgCalls):
                         media.message_id = sent.id
         except FileNotFoundError:
             await message.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-            await self.play_next(chat_id)
+            await self._play_next(chat_id)
         except exceptions.NoActiveGroupCall:
-            await self.stop(chat_id)
+            await self._stop(chat_id)
             await message.edit_text(_lang["error_no_call"])
         except exceptions.NoAudioSourceFound:
             await message.edit_text(_lang["error_no_audio"])
-            await self.play_next(chat_id)
+            await self._play_next(chat_id)
         except (ConnectionError, ConnectionNotFound, TelegramServerError):
-            await self.stop(chat_id)
+            await self._stop(chat_id)
             await message.edit_text(_lang["error_tg_server"])
         except RTMPStreamingUnsupported:
-            await self.stop(chat_id)
+            await self._stop(chat_id)
             await message.edit_text(_lang["error_rtmp"])
         finally:
             if _thumb_task and not _thumb_task.done():
@@ -230,19 +276,22 @@ class TgCall(PyTgCalls):
                 with suppress(asyncio.CancelledError):
                     await _thumb_task
 
-
     async def replay(self, chat_id: int) -> None:
-        if not await db.get_call(chat_id):
-            return
+        async with self.transition(chat_id):
+            if not await db.get_call(chat_id):
+                return
 
-        media = queue.get_current(chat_id)
-        _lang = await lang.get_lang(chat_id)
-        msg = await app.send_message(chat_id=chat_id, text=_lang["play_again"])
-        media.message_id = msg.id
-        await self.play_media(chat_id, msg, media)
-
+            media = queue.get_current(chat_id)
+            _lang = await lang.get_lang(chat_id)
+            msg = await app.send_message(chat_id=chat_id, text=_lang["play_again"])
+            media.message_id = msg.id
+            await self._play_media(chat_id, msg, media)
 
     async def play_next(self, chat_id: int) -> None:
+        async with self.transition(chat_id):
+            await self._play_next(chat_id)
+
+    async def _play_next(self, chat_id: int) -> None:
         current = queue.get_current(chat_id)
         if current and current.message_id:
             try:
@@ -256,7 +305,12 @@ class TgCall(PyTgCalls):
 
         if loop := await db.get_loop(chat_id):
             await db.set_loop(chat_id, loop - 1)
-            return await self.replay(chat_id)
+            if not current:
+                return await self._stop(chat_id)
+            _lang = await lang.get_lang(chat_id)
+            msg = await app.send_message(chat_id=chat_id, text=_lang["play_again"])
+            current.message_id = msg.id
+            return await self._play_media(chat_id, msg, current)
 
         media = queue.get_next(chat_id)
 
@@ -265,7 +319,7 @@ class TgCall(PyTgCalls):
         if not media:
             if current and await db.get_autoplay(chat_id):
                 return await self._autoplay(chat_id, current)
-            return await self.stop(chat_id)
+            return await self._stop(chat_id)
 
         try:
             if media.message_id:
@@ -289,17 +343,17 @@ class TgCall(PyTgCalls):
                 await msg.edit_text(
                     _lang["error_no_file"].format(config.SUPPORT_CHAT)
                 )
-                return await self.play_next(chat_id)
+                return await self._play_next(chat_id)
 
         media.message_id = msg.id
-        await self.play_media(chat_id, msg, media)
+        await self._play_media(chat_id, msg, media)
 
     async def _autoplay(self, chat_id: int, current) -> None:
         """Queue a related track and keep playing; stop when nothing found."""
         _lang = await lang.get_lang(chat_id)
         media = await yt.related(current, video=current.video)
         if not media:
-            return await self.stop(chat_id)
+            return await self._stop(chat_id)
 
         media.user = _lang["autoplay_label"]
         msg = await app.send_message(
@@ -309,14 +363,18 @@ class TgCall(PyTgCalls):
         media.file_path = await yt.download(media.id, video=media.video)
         if not media.file_path:
             await msg.edit_text(_lang["error_no_file"].format(config.SUPPORT_CHAT))
-            return await self.stop(chat_id)
+            return await self._stop(chat_id)
 
+        queue.add(chat_id, media)
         media.message_id = msg.id
-        await self.play_media(chat_id, msg, media)
+        await self._play_media(chat_id, msg, media)
 
     async def ping(self) -> float:
-        pings = [client.ping for client in self.clients]
-        return round(sum(pings) / len(pings), 2)
+        async def get_ping(client) -> float:
+            return await asyncio.to_thread(lambda: client.ping)
+
+        pings = await asyncio.gather(*(get_ping(client) for client in self.clients))
+        return round(sum(pings) / len(pings), 2) if pings else 0.0
 
 
     async def decorators(self, client: PyTgCalls) -> None:
