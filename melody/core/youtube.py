@@ -66,10 +66,8 @@ class YouTube:
             r"(?!/(watch\?v=[A-Za-z0-9_-]{11}|shorts/[A-Za-z0-9_-]{11}"
             r"|playlist\?list=[A-Za-z0-9_-]+|[A-Za-z0-9_-]{11}))\S*"
         )
-        # Same-id requests share one download task.
-        self._inflight: dict[str, asyncio.Task] = {}
-        # Waiter count per id; zero aborts the download via progress hook.
-        self._waiters: dict[str, int] = {}
+        # Same-id and mode requests share one download task.
+        self._inflight: dict[tuple[str, bool], asyncio.Task] = {}
 
     def _usable_file(self, filename: str | Path) -> bool:
         path = Path(filename)
@@ -91,10 +89,15 @@ class YouTube:
         except OSError:
             return 0.0
 
+    @staticmethod
+    def _cache_key(video_id: str, video: bool) -> str:
+        return f"{video_id}-{'video' if video else 'audio'}"
+
     def _cached_download(self, video_id: str, video: bool) -> str | None:
         # Scan all extensions; yt-dlp may write mp4/webm/m4a/mkv.
+        prefix = f"{self._cache_key(video_id, video)}."
         candidates = sorted(
-            Path("downloads").glob(f"{video_id}.*"),
+            Path("downloads").glob(f"{prefix}*"),
             key=self._mtime,
             reverse=True,
         )
@@ -352,21 +355,38 @@ class YouTube:
     async def download(
         self, video_id: str, video: bool = False, prefetch: bool = False
     ) -> str | None:
-        url = self.base + video_id
-
+        key = (video_id, video)
         cached = self._cached_download(video_id, video)
         if cached:
             return cached
+        owner = asyncio.current_task()
+        existing = self._inflight.get(key)
+        if existing is not None and existing is not owner:
+            return await asyncio.shield(existing)
+        if existing is owner:
+            return cached
+        self._inflight[key] = owner
+        try:
+            return await self._download_locked(video_id, video, prefetch)
+        finally:
+            if self._inflight.get(key) is owner:
+                self._inflight.pop(key, None)
 
+    async def _download_locked(
+        self, video_id: str, video: bool, prefetch: bool
+    ) -> str | None:
+        cached = self._cached_download(video_id, video)
+        if cached:
+            return cached
         if self._api_enabled():
             downloaded = await self._download_api(video_id, video=video)
             if downloaded:
                 return downloaded
 
+        url = self.base + video_id
         cookie = self.get_cookies()
-
         base_opts = {
-            "outtmpl": "downloads/%(id)s.%(ext)s",
+            "outtmpl": f"downloads/{self._cache_key(video_id, video)}.%(ext)s",
             "quiet": True,
             "noplaylist": True,
             "geo_bypass": True,
@@ -406,26 +426,16 @@ class YouTube:
                 "format_sort": ["acodec:opus", "ext:webm"],
             }
 
-        # Hook aborts the download when the last waiter cancels (skip/stop).
-        def _progress_hook(_status):
-            if self._waiters.get(video_id, 0) <= 0:
-                raise yt_dlp.utils.DownloadCancelled()
-
-        opts = {**ydl_opts, "progress_hooks": [_progress_hook]}
-
         def _download():
-            with yt_dlp.YoutubeDL(opts) as ydl:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 try:
                     info = ydl.extract_info(url, download=True)
-                except yt_dlp.utils.DownloadCancelled:
-                    return None
                 except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as ex:
                     logger.warning("yt_dlp download failed for %s: %s", video_id, ex)
                     return None
                 except Exception as ex:
                     logger.warning("Unexpected download error for %s: %s", video_id, ex)
                     return None
-            # Use yt-dlp's reported path; scan the dir only as fallback.
             requested = (info or {}).get("requested_downloads") or []
             path = None
             if requested:
@@ -438,22 +448,4 @@ class YouTube:
                 self._evict_downloads()
             return path
 
-        # Same-id requests share one task; shield keeps it alive for other
-        # waiters when one caller cancels.
-        self._waiters[video_id] = self._waiters.get(video_id, 0) + 1
-        try:
-            task = self._inflight.get(video_id)
-            if task is None:
-                task = asyncio.ensure_future(asyncio.to_thread(_download))
-                self._inflight[video_id] = task
-                task.add_done_callback(
-                    lambda t, v=video_id: self._inflight.pop(v, None)
-                    if self._inflight.get(v) is t
-                    else None
-                )
-            # shield: a cancelled caller must not kill the shared download.
-            return await asyncio.shield(task)
-        finally:
-            self._waiters[video_id] = self._waiters.get(video_id, 1) - 1
-            if self._waiters.get(video_id, 0) <= 0:
-                self._waiters.pop(video_id, None)
+        return await asyncio.to_thread(_download)

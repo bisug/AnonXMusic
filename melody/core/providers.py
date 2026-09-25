@@ -17,7 +17,8 @@ WATCH_BASE = "https://www.youtube.com/watch?v="
 
 def _filename(video_id: str, video: bool) -> Path:
     ext = "mp4" if video else "mp3"
-    return Path("downloads") / f"{video_id}.{ext}"
+    mode = "video" if video else "audio"
+    return Path("downloads") / f"{video_id}-{mode}.{ext}"
 
 
 def _usable(path: Path) -> bool:
