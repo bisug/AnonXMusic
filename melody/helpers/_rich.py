@@ -3,8 +3,6 @@
 # This file is part of Melody
 
 
-import time
-
 from pyrogram import enums, types
 
 from melody import config, logger
@@ -21,7 +19,7 @@ def progress_line(played: str, duration: str, steps: int = 10) -> str:
 
 
 def _time(sec: int) -> str:
-    return time.strftime("%M:%S", time.gmtime(sec))
+    return utils.format_duration(sec)
 
 
 def build_np(

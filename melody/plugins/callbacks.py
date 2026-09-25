@@ -4,17 +4,16 @@
 
 
 import re
-import time
 
 from pyrogram import errors, filters, types
 
 from melody import anon, app, db, lang, logger, queue, tg, yt
-from melody.helpers import admin_check, buttons, can_manage_vc
+from melody.helpers import admin_check, buttons, can_manage_vc, utils
 from melody.helpers import _rich
 
 
 def _played_str(media):
-    return time.strftime("%M:%S", time.gmtime(min(media.time, media.duration_sec)))
+    return utils.format_duration(min(media.time, media.duration_sec))
 
 
 async def _edit_help_message(query: types.CallbackQuery, text: str, reply_markup):

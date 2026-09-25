@@ -130,7 +130,7 @@ class Telegram:
 
             return Media(
                 id=file_id,
-                duration=time.strftime("%M:%S", time.gmtime(duration)),
+                duration=utils.format_duration(duration),
                 duration_sec=duration,
                 file_path=file_path,
                 message_id=sent.id,

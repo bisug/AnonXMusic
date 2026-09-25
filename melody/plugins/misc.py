@@ -10,7 +10,7 @@ from contextlib import suppress
 from pyrogram import enums, errors, filters, types
 
 from melody import anon, app, config, db, lang, logger, queue, tasks, userbot, yt
-from melody.helpers import buttons
+from melody.helpers import buttons, utils
 from melody.helpers import _rich
 
 
@@ -91,15 +91,17 @@ async def update_timer(length=10, sleep=12):
                 remaining = max(duration - played, 0)
 
                 if remaining <= 30:
-                    next = queue.get_next(chat_id, check=True)
+                    upcoming = queue.get_next(chat_id, check=True)
                     if (
-                        next
-                        and not next.file_path
-                        and not getattr(next, "is_live", False)
+                        upcoming
+                        and not upcoming.file_path
+                        and not getattr(upcoming, "is_live", False)
                     ):
                         # Prefetch async; yt dedups repeats across ticks.
                         _spawn_bg(
-                            yt.download(next.id, video=next.video, prefetch=True)
+                            yt.download(
+                                upcoming.id, video=upcoming.video, prefetch=True
+                            )
                         )
 
                 if media.rich_ui:
@@ -111,7 +113,10 @@ async def update_timer(length=10, sleep=12):
                 pos = min(int((played / duration) * length), length - 1)
                 timer = "—" * pos + "◉" + "—" * (length - pos - 1)
 
-                timer = f"{time.strftime('%M:%S', time.gmtime(played))} | {timer} | -{time.strftime('%M:%S', time.gmtime(remaining))}"
+                timer = (
+                    f"{utils.format_duration(played)} | {timer} | "
+                    f"-{utils.format_duration(remaining)}"
+                )
 
                 await app.edit_message_reply_markup(
                     chat_id=chat_id,
