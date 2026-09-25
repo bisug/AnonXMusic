@@ -72,7 +72,7 @@ async def play_hndlr(
     _dl_task: asyncio.Task | None = None
 
     if media:
-        setattr(sent, "lang", m.lang)
+        sent.lang = m.lang
         file = await tg.download(m.reply_to_message, sent)
 
     elif m3u8:

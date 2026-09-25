@@ -3,9 +3,11 @@
 # This file is part of Melody
 
 
-import os
 import ast
+import inspect
+import os
 import traceback
+
 
 async def meval(code: str, globs: dict, **kwargs):
     """Evaluate code async in a controlled environment."""
@@ -71,7 +73,7 @@ async def meval(code: str, globs: dict, **kwargs):
     result = await locs["tmp"](**kwargs)
     if not result:
         return None
-    result = [await r if hasattr(r, "__await__") else r for r in result]
+    result = [await r if inspect.isawaitable(r) else r for r in result]
     result = [r for r in result if r is not None]
 
     return result[0] if len(result) == 1 else (result or None)

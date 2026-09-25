@@ -46,7 +46,7 @@ class Userbot(Client):
                 f"({config.LOGGER_ID}): {ex}\n"
                 f"Fix: add the assistant account to the log group "
                 f"and ensure it can post there."
-            )
+            ) from ex
 
         client.id = ub.me.id
         client.name = ub.me.first_name

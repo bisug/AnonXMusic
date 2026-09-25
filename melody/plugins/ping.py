@@ -112,6 +112,7 @@ async def _ping(_, m: types.Message):
                     seconds // 86400,
                 ],
                 ["s", "m", "h", "days"],
+                strict=True,
             )
         ]
         return (f"{parts[-1]}, " if parts[-1][:-4] != "0" else "") + ":".join(
