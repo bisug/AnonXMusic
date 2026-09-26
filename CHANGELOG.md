@@ -17,6 +17,7 @@ All notable changes to Melody. Format based on Keep a Changelog; versions follow
 - `setup` writes `.env` with `0600` (it holds the bot token and string session).
 
 ### Changed
+- Dependencies moved to the latest stable releases: `py-tgcalls` 2.3.x → 3.0.0 (pulls `ntgcalls` 2.2.5 → 3.0.0, which adds conference-call support and a `deprecation` dependency), `pymongo` 4.18.1 → 4.18.2, `aiohttp` 3.14.1 → 3.14.3, plus the already-locked `pillow` 12.3.0 / `py-yt-search` 0.8.0 floors; Dockerfile `uv` 0.12.17 → 0.12.19 and CI `astral-sh/setup-uv` v10.1.0 → v10.2.0. No application code changes were needed: `PyTgCalls.play/pause/resume/leave_call/calls/ping/executor`, `MediaStream`, `GroupCallConfig`, `on_update` dispatch and the `ntgcalls` error classes used in `core/calls.py` are unchanged in 3.0.0.
 - CI pinned to current action majors; Docker build uses Buildx with GHA cache; added markdown link check (lychee).
 - Dockerfile: `COPY --chown` instead of a full `chown -R` layer; venv trimmed (`__pycache__`, `dist-info` removed); corrected the cleanup path for the extracted ffmpeg tree.
 - Audit cleanup: plugin modules load in a deterministic (sorted) order; `get_languages()` reuses the locales loaded at startup instead of re-globbing the directory; the three HTTP download providers share one `.part` cleanup helper.
@@ -29,4 +30,5 @@ All notable changes to Melody. Format based on Keep a Changelog; versions follow
 - Rich now-playing UI (kurigram rich messages): photo, title, progress-bar row and styled Pause/Resume · Replay · Skip · Stop controls, reusing the existing `controls` callbacks; timer re-renders progress; automatic fallback to the classic text + inline-keyboard UI; `RICH_UI` env toggle.
 - `/settings` gained an Autoplay row; wiki architecture page + SVG diagram; credits section in the README.
 - Queue unit tests locking add/current/next/force_add/clear semantics.
+- `tests/test_calls.py`: guards the pytgcalls update contract the autoplay/leave watchers rely on (`StreamEnded` → `play_next`, `ChatUpdate` KICKED/LEFT_GROUP/CLOSED_VOICE_CHAT → `stop`).
 - README with SVG badges, wiki pages, one-click deploy buttons (Heroku/Render/Railway).

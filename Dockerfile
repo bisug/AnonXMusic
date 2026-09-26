@@ -2,7 +2,7 @@
 
 # ---- Stage 1: deps — resolve and install Python dependencies with uv ----
 FROM python:3.14-slim AS deps
-COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.19 /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
